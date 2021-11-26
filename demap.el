@@ -20,7 +20,58 @@
 ;;; Code:
 
 
-(defvar demap-buffers '())
+;;--dependentys
+(eval-when-compile
+  (require 'cl-lib) )
+
+
+;;minimap object
+(defun demap-minimap-p(minimap)
+  "Determin if MINIMAP is a demap-minimap."
+  (and (listp minimap)
+       (eq (car minimap) 'demap-minimap) ))
+
+(defun demap-minimap-buffer(minimap)
+  "Return the buffer used by MINIMAP.
+this buffer can get killed when the minimap
+switches what buffer it is shadowing."
+  (nth 1 minimap))
+(gv-define-setter demap-minimap-buffer(val minimap)
+  `(setf (nth 1 ,minimap) ,val))
+
+(defun demap-minimap-live-p(minimap)
+  "Determin if MINIMAP is live."
+  (and (demap-minimap-p minimap)
+       (buffer-live-p (demap-minimap-buffer minimap)) ))
+
+
+(defun demap-generate-minimap(name)
+  "Genorate and return a new minimap with name NAME."
+  (let ((new-map `(demap-minimap ,nil)))
+    (setf (demap-minimap-buffer new-map) (generate-new-buffer name))
+    new-map ))
+
+(defun demap-kill-minimap(minimap)
+  "Distroy the minimap buffer MINIMAP."
+  (cl-assert (demap-minimap-p minimap))
+  (when (demap-minimap-live-p minimap)
+    (kill-buffer (nth 1 minimap)) ))
+
+
+;;debug
+(defvar demap-minimaps '()
+  "Debug list of minimaps.")
+
+
+(defun demap-minimaps-new(name)
+  "Make and return a new minimap with name NAME."
+  (push (demap-generate-minimap name) demap-minimaps) )
+
+(defun demap-minimaps-clear()
+  "."
+  (dolist (map demap-minimaps)
+    (demap-kill-minimap map) )
+  (setq demap-minimaps '()) )
 
 
 (provide 'demap)
