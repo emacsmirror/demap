@@ -24,7 +24,6 @@
 (eval-when-compile
   (require 'cl-lib) )
 
-;;test
 
 ;;minimap object
 (defun demap-minimap-p(minimap)
@@ -54,9 +53,9 @@ switches what buffer it is shadowing."
 
 (defun demap-kill-minimap(minimap)
   "Distroy the minimap buffer MINIMAP."
-  (cl-assert (demap-minimap-p minimap))
+  (cl-assert (demap-minimap-p minimap) t "Wrong type argument: demap-minimap, %s")
   (when (demap-minimap-live-p minimap)
-    (kill-buffer (nth 1 minimap)) ))
+    (kill-buffer (demap-minimap-buffer minimap)) ))
 
 
 ;;debug
