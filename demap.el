@@ -24,6 +24,7 @@
 (eval-when-compile
   (require 'cl-lib) )
 
+;;test
 
 ;;minimap object
 (defun demap-minimap-p(minimap)
