@@ -59,9 +59,9 @@ switches what buffer it is shadowing."
          (bfr (window-normalize-buffer ,buffer-or-name)))
      (when (demap-minimap-buffer mm)
        (with-current-buffer (demap-minimap-buffer mm)
-         (kill-local-variable demap--current-minimap) ))
+         (kill-local-variable 'demap--current-minimap) ))
      (with-current-buffer bfr
-       (buffer-local-value 'demap--current-minimap bfr) )
+       (setq demap--current-minimap mm) )
      (setf (nth 1 mm) bfr)))
 
 (defun demap-buffer-minimap(&optional buffer-or-name)
