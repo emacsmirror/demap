@@ -28,6 +28,41 @@
     (require 'window) ))
 
 
+(defgroup demap nil
+  "A detachable minimap for Emacs."
+  :group 'convenience)
+
+(defface demap-font-face
+  '((default :family "DejaVu Sans Mono" :height 30))
+  "Face used for the body of the minimap."
+  :group 'demap)
+
+(defface demap-visable-region-face
+  '((((background dark)) (:background "#700000" :extend t))
+    (t (:background "#C847D8FEFFFF" :extend t)))
+  "Face used to represent the part of the minimap visible throw the main window."
+  :group 'demap)
+
+(defface demap-current-line-face
+  '((((background dark)) (:background "dark gray"))
+    (t (:background "dark gray")))
+  "Face used to show the current line."
+  :group 'demap)
+
+
+(defvar demap-minimap-change-functions nil
+  "Hook to ran when changing what buffer a demap-minimap is showing.
+demap has to replace its buffer whenever it changes
+what it shadows. this hook is applied after
+everything has been moved to the new buffer but
+before the old one gets killed. the functions should
+take one argument (MINIMAP). MINIMAP is the minimap
+that is changing.")
+
+(defvar-local demap--current-minimap nil
+  "The minimap associated with this buffer.")
+
+
 (defun demap--window-replace-buffer(buffer-or-name new-buffer-or-name)
   "Replace the buffer in all windows holding BUFFER-OR-NAME with NEW-BUFFER-OR-NAME."
   (dolist (window (get-buffer-window-list buffer-or-name t t))
@@ -41,19 +76,6 @@ BUFFER's new name is undefined."
       (rename-buffer "-old minimap buffer-" t)
       name )))
 
-
-
-(defvar-local demap--current-minimap nil
-  "The minimap associated with this buffer.")
-
-(defvar demap-minimap-change-functions nil
-  "Hook to ran when changing what buffer a demap-minimap is showing.
-demap has to replace its buffer whenever it changes
-what it shadows. this hook is applied after
-everything has been moved to the new buffer but
-before the old one gets killed. the functions should
-take one argument (MINIMAP). MINIMAP is the minimap
-that is changing.")
 
 ;;minimap buffer
 
