@@ -42,7 +42,6 @@ BUFFER's new name is undefined."
       name )))
 
 
-;;minimap object
 
 (defvar-local demap--current-minimap nil
   "The minimap associated with this buffer.")
@@ -56,6 +55,36 @@ before the old one gets killed. the functions should
 take one argument (MINIMAP). MINIMAP is the minimap
 that is changing.")
 
+;;minimap buffer
+
+(defun demap--generate-minimap-buffer(name buffer-show)
+  "Make a new buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
+  (if buffer-show
+      (make-indirect-buffer buffer-show name)
+    (generate-new-buffer name) ))
+
+(defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
+  "Make a copy of OLD-BUFFER-OR-NAME but have it show BUFFER-SHOW."
+  (demap--generate-minimap-buffer (demap--buffer-steal-name old-buffer-or-name) buffer-show) )
+
+(defun demap-buffer-minimap(&optional buffer-or-name)
+  "Return the demap-minimap associated with BUFFER-OR-NAME.
+If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
+  (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)))
+
+(defun demap--run-minimap-change-functions(buffer minimap)
+  "Run hook 'demap-minimap-change-functions' has BUFFER, with MINIMAP."
+  (with-current-buffer buffer
+    (run-hook-with-args demap-minimap-change-functions minimap) ))
+
+(defun demap--kill-old-minimap-buffer(minimap-buffer minimap)
+  "Kill buffer MINIMAP-BUFFER that used to be associated with MINIMAP."
+  (unwind-protect
+      (demap--run-minimap-change-functions minimap-buffer minimap)
+    (kill-buffer minimap-buffer) ))
+
+
+;;minimap object
 
 (defun demap-minimap-p(minimap)
   "Determin if MINIMAP is a demap-minimap."
@@ -82,43 +111,17 @@ identical to (setf ('demap-minimap-buffer' MINIMAP) BUFFER-OR-NAME)"
 (gv-define-setter demap-minimap-buffer(buffer-or-name minimap)
   `(demap--minimap-buffer-set ,minimap ,buffer-or-name))
 
-(defun demap-buffer-minimap(&optional buffer-or-name)
-  "Return the demap-minimap associated with BUFFER-OR-NAME.
-If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
-  (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)))
-
 (defun demap-minimap-live-p(minimap)
   "Determin if MINIMAP is live."
   (and (demap-minimap-p minimap)
        (buffer-live-p (demap-minimap-buffer minimap)) ))
-
-(defun demap--make-new-minimap-buffer(name buffer-show)
-  "Make a new buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
-  (if buffer-show
-      (make-indirect-buffer buffer-show name)
-    (generate-new-buffer name) ))
-
-(defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
-  "Make a copy of OLD-BUFFER-OR-NAME but have it show BUFFER-SHOW."
-  (demap--make-new-minimap-buffer (demap--buffer-steal-name old-buffer-or-name) buffer-show) )
-
-(defun demap--run-minimap-change-functions(buffer minimap)
-  "Run hook 'demap-minimap-change-functions' has BUFFER, with MINIMAP."
-  (with-current-buffer buffer
-    (run-hook-with-args demap-minimap-change-functions minimap) ))
-
-(defun demap--kill-old-minimap-buffer(minimap-buffer minimap)
-  "Kill buffer MINIMAP-BUFFER that used to be associated with MINIMAP."
-  (unwind-protect
-      (demap--run-minimap-change-functions minimap-buffer minimap)
-    (kill-buffer minimap-buffer) ))
 
 (defun demap--minimap-swapout-buffer(minimap minimap-buffer)
   "Replace the buffer in minimap MINIMAP with MINIMAP-BUFFER."
   (demap--window-replace-buffer (demap-minimap-buffer minimap) minimap-buffer)
   (setf (demap-minimap-buffer minimap) minimap-buffer) )
 
-(defun demap--unsafe-minimap-change-showing(minimap new-show)
+(defun demap--unsafe-minimap-showing-set(minimap new-show)
   ""
   (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
     (demap--minimap-swapout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
@@ -137,7 +140,7 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP) BUFFER-OR-NAME)"
   (cl-assert (or (not buffer-or-name)
                  (buffer-live-p (get-buffer buffer-or-name)) )
                  t "Wrong type argument: stringp, %s" )
-  (demap--unsafe-minimap-change-showing minimap buffer-or-name)
+  (demap--unsafe-minimap-showing-set minimap buffer-or-name)
   buffer-or-name )
 
 (gv-define-setter demap-minimap-showing(buffer-or-name minimap)
@@ -155,22 +158,6 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP) BUFFER-OR-NAME)"
   (cl-assert (demap-minimap-p minimap) t "Wrong type argument: demap-minimap, %s")
   (when (demap-minimap-live-p minimap)
     (kill-buffer (demap-minimap-buffer minimap)) ))
-
-
-;;debug
-(defvar demap-minimaps '()
-  "Debug list of minimaps.")
-
-
-(defun demap-minimaps-new(name)
-  "Make and return a new minimap with name NAME."
-  (push (demap-generate-minimap name) demap-minimaps) )
-
-(defun demap-minimaps-clear()
-  "."
-  (dolist (map demap-minimaps)
-    (demap-kill-minimap map) )
-  (setq demap-minimaps '()) )
 
 
 (provide 'demap)
