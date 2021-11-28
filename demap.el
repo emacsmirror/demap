@@ -20,11 +20,11 @@
 ;;; Code:
 
 
-;;--dependentys
+;;--dependents
 (eval-when-compile
   (require 'cl-lib)
   (when (>= emacs-major-version 28)
-    ;window.el dosnt provide 'window before version 28
+    ;window.el doesn't provide 'window before version 28
     (require 'window) ))
 
 
@@ -45,16 +45,16 @@ BUFFER's new name is undefined."
 ;;minimap object
 
 (defvar-local demap--current-minimap nil
-  "The minimap asoshiated with this buffer.")
+  "The minimap associated with this buffer.")
 
 (defvar demap-minimap-change-functions nil
-  "Hook to ran when changeing what buffer a demap-minimap is showing.
+  "Hook to ran when changing what buffer a demap-minimap is showing.
 demap has to replace its buffer whenever it changes
-what it shadows. this hook is appliad after
+what it shadows. this hook is applied after
 everything has been moved to the new buffer but
 before the old one gets killed. the functions should
 take one argument (MINIMAP). MINIMAP is the minimap
-that is changeing.")
+that is changing.")
 
 
 (defun demap-minimap-p(minimap)
@@ -83,8 +83,8 @@ identical to (setf ('demap-minimap-buffer' MINIMAP) BUFFER-OR-NAME)"
   `(demap--minimap-buffer-set ,minimap ,buffer-or-name))
 
 (defun demap-buffer-minimap(&optional buffer-or-name)
-  "Return the demap-minimap asoshiated with BUFFER-OR-NAME.
-If BUFFER-OR-NAME is not asosiated with a minimap then it returns nil."
+  "Return the demap-minimap associated with BUFFER-OR-NAME.
+If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
   (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)))
 
 (defun demap-minimap-live-p(minimap)
@@ -99,7 +99,7 @@ If BUFFER-OR-NAME is not asosiated with a minimap then it returns nil."
     (generate-new-buffer name) ))
 
 (defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
-  "Make a copy of OLD-BUFFER-OR-NAME but hav it show BUFFER-SHOW."
+  "Make a copy of OLD-BUFFER-OR-NAME but have it show BUFFER-SHOW."
   (demap--make-new-minimap-buffer (demap--buffer-steal-name old-buffer-or-name) buffer-show) )
 
 (defun demap--run-minimap-change-functions(buffer minimap)
@@ -108,12 +108,12 @@ If BUFFER-OR-NAME is not asosiated with a minimap then it returns nil."
     (run-hook-with-args demap-minimap-change-functions minimap) ))
 
 (defun demap--kill-old-minimap-buffer(minimap-buffer minimap)
-  "Kill buffer MINIMAP-BUFFER that used to be asoshieted with MINIMAP."
+  "Kill buffer MINIMAP-BUFFER that used to be associated with MINIMAP."
   (unwind-protect
       (demap--run-minimap-change-functions minimap-buffer minimap)
     (kill-buffer minimap-buffer) ))
 
-(defun demap--minimap-swopout-buffer(minimap minimap-buffer)
+(defun demap--minimap-swapout-buffer(minimap minimap-buffer)
   "Replace the buffer in minimap MINIMAP with MINIMAP-BUFFER."
   (demap--window-replace-buffer (demap-minimap-buffer minimap) minimap-buffer)
   (setf (demap-minimap-buffer minimap) minimap-buffer) )
@@ -121,7 +121,7 @@ If BUFFER-OR-NAME is not asosiated with a minimap then it returns nil."
 (defun demap--unsafe-minimap-change-showing(minimap new-show)
   ""
   (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
-    (demap--minimap-swopout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
+    (demap--minimap-swapout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
     (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
 
 (defun demap-minimap-showing(minimap)
