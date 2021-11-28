@@ -79,11 +79,17 @@ BUFFER's new name is undefined."
 
 ;;minimap buffer
 
-(defun demap--generate-minimap-buffer(name buffer-show)
+(defun demap--generate-buffer(name &optional buffer-show)
   "Make a new buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
   (if buffer-show
       (make-indirect-buffer buffer-show name)
     (generate-new-buffer name) ))
+
+(defun demap--generate-minimap-buffer(name &optional buffer-show)
+  "Make and setup a buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
+  (with-current-buffer (demap--generate-buffer name buffer-show)
+    (buffer-face-set 'demap-font-face)
+    (current-buffer) ))
 
 (defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
   "Make a copy of OLD-BUFFER-OR-NAME but have it show BUFFER-SHOW."
@@ -172,7 +178,7 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP) BUFFER-OR-NAME)"
 (defun demap-generate-minimap(name)
   "Genorate and return a new minimap with name NAME."
   (let ((new-map `(demap-minimap nil)))
-    (setf (demap-minimap-buffer new-map) (generate-new-buffer name))
+    (setf (demap-minimap-buffer new-map) (demap--generate-minimap-buffer name))
     new-map ))
 
 (defun demap-kill-minimap(minimap)
