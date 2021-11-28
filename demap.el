@@ -28,6 +28,19 @@
     (require 'window) ))
 
 
+(defun demap--window-replace-buffer(buffer-or-name new-buffer-or-name)
+  "Replace the buffer in all windows holding BUFFER-OR-NAME with NEW-BUFFER-OR-NAME."
+  (dolist (window (get-buffer-window-list buffer-or-name t t))
+    (set-window-buffer window new-buffer-or-name t) ))
+
+(defun demap--buffer-steal-name(&optional buffer)
+  "Rename BUFFER and return its old name.
+BUFFER's new name is undefined."
+  (with-current-buffer buffer
+    (let ((name (buffer-name)))
+      (rename-buffer "-old minimap buffer-" t)
+      name )))
+
 
 ;;minimap object
 
@@ -74,6 +87,38 @@ If BUFFER-OR-NAME is not asosiated with a minimap then it returns nil."
   (and (demap-minimap-p minimap)
        (buffer-live-p (demap-minimap-buffer minimap)) ))
 
+(defun demap--make-new-minimap-buffer(name buffer-show)
+  "Make a new buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
+  (if buffer-show
+      (make-indirect-buffer buffer-show name)
+    (generate-new-buffer name) ))
+
+(defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
+  "Make a copy of OLD-BUFFER-OR-NAME but hav it show BUFFER-SHOW."
+  (demap--make-new-minimap-buffer (demap--buffer-steal-name old-buffer-or-name) buffer-show) )
+
+(defun demap--run-minimap-change-functions(buffer minimap)
+  "Run hook 'demap-minimap-change-functions' has BUFFER, with MINIMAP."
+  (with-current-buffer buffer
+    (run-hook-with-args demap-minimap-change-functions minimap) ))
+
+(defun demap--kill-old-minimap-buffer(minimap-buffer minimap)
+  "Kill buffer MINIMAP-BUFFER that used to be asoshieted with MINIMAP."
+  (unwind-protect
+      (demap--run-minimap-change-functions minimap-buffer minimap)
+    (kill-buffer minimap-buffer) ))
+
+(defun demap--minimap-swopout-buffer(minimap minimap-buffer)
+  "Replace the buffer in minimap MINIMAP with MINIMAP-BUFFER."
+  (demap--window-replace-buffer (demap-minimap-buffer minimap) minimap-buffer)
+  (setf (demap-minimap-buffer minimap) minimap-buffer) )
+
+(defun demap--unsafe-minimap-change-showing(minimap new-show)
+  ""
+  (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
+    (demap--minimap-swopout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
+    (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
+
 (defun demap-minimap-showing(minimap)
   "Return the buffer that MINIMAP is showing.
 if MINIMAP is blank or dead, return nil."
@@ -85,17 +130,8 @@ if MINIMAP is blank or dead, return nil."
      (cl-assert (or (not new-show)
                     (buffer-live-p (get-buffer new-show)) )
                 t "Wrong type argument: stringp, %s" )
-     (with-current-buffer (demap-minimap-buffer mmap)
-       (let ((name (buffer-name)))
-         (rename-buffer "-old minimap buffer-" t)
-         (setf (demap-minimap-buffer mmap) (if new-show
-                                             (make-indirect-buffer new-show name)
-                                           (generate-new-buffer name) ))
-         (dolist (window (get-buffer-window-list nil t t))
-           (set-window-buffer window (demap-minimap-buffer mmap) t) )
-         (unwind-protect
-             (run-hook-with-args demap-minimap-change-functions mmap)
-           (kill-buffer) )))))
+     (demap--unsafe-minimap-change-showing mmap new-show)
+     new-show ))
 
 
 (defun demap-generate-minimap(name)
