@@ -67,15 +67,20 @@ that is changeing.")
 this buffer can get killed when the minimap
 switches what buffer it is shadowing."
   (nth 1 minimap))
+
+(defun demap--minimap-buffer-set(minimap buffer-or-name)
+  "Set the buffer used by minimap MINIMAP to BUFFER-OR-NAME.
+identical to (setf ('demap-minimap-buffer' MINIMAP) BUFFER-OR-NAME)"
+  (let ((bfr (window-normalize-buffer buffer-or-name)))
+    (when (demap-minimap-buffer minimap)
+      (with-current-buffer (demap-minimap-buffer minimap)
+        (kill-local-variable 'demap--current-minimap) ))
+    (with-current-buffer bfr
+      (setq demap--current-minimap minimap) )
+    (setf (nth 1 minimap) bfr)))
+
 (gv-define-setter demap-minimap-buffer(buffer-or-name minimap)
-  `(let ((mm ,minimap)
-         (bfr (window-normalize-buffer ,buffer-or-name)))
-     (when (demap-minimap-buffer mm)
-       (with-current-buffer (demap-minimap-buffer mm)
-         (kill-local-variable 'demap--current-minimap) ))
-     (with-current-buffer bfr
-       (setq demap--current-minimap mm) )
-     (setf (nth 1 mm) bfr)))
+  `(demap--minimap-buffer-set ,minimap ,buffer-or-name))
 
 (defun demap-buffer-minimap(&optional buffer-or-name)
   "Return the demap-minimap asoshiated with BUFFER-OR-NAME.
@@ -124,14 +129,19 @@ If BUFFER-OR-NAME is not asosiated with a minimap then it returns nil."
 if MINIMAP is blank or dead, return nil."
   (when (demap-minimap-live-p minimap)
     (buffer-base-buffer (demap-minimap-buffer minimap)) ))
+
+(defun demap-minimap-showing-set(minimap buffer-or-name)
+  "Set the buffer that minimap MINIMAP is showing to BUFFER-OR-NAME.
+this is equivalent to (setf ('demap-minimap-showing' MINIMAP) BUFFER-OR-NAME)"
+  (cl-assert (demap-minimap-p minimap) t "Wrong type argument: demap-minimap, %s")
+  (cl-assert (or (not buffer-or-name)
+                 (buffer-live-p (get-buffer buffer-or-name)) )
+                 t "Wrong type argument: stringp, %s" )
+  (demap--unsafe-minimap-change-showing minimap buffer-or-name)
+  buffer-or-name )
+
 (gv-define-setter demap-minimap-showing(buffer-or-name minimap)
-  `(let ((mmap ,minimap) (new-show ,buffer-or-name))
-     (cl-assert (demap-minimap-p mmap) t "Wrong type argument: demap-minimap, %s")
-     (cl-assert (or (not new-show)
-                    (buffer-live-p (get-buffer new-show)) )
-                t "Wrong type argument: stringp, %s" )
-     (demap--unsafe-minimap-change-showing mmap new-show)
-     new-show ))
+  `(demap-minimap-showing-set ,minimap ,buffer-or-name))
 
 
 (defun demap-generate-minimap(name)
