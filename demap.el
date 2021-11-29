@@ -119,6 +119,17 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
   (and (listp minimap)
        (eq (car minimap) 'demap-minimap) ))
 
+(defun demap-normalize-minimap(minimap-or-name)
+  "Return demap-minimap specified by MINIMAP-OR-NAME.
+MINIMAP-OR-NAME must be a live minimap, a live
+minimap-buffer, a string naming a live
+minimap-buffer or nil which means to return the
+minimap for the current buffer."
+  (if (demap-minimap-p minimap-or-name)
+      minimap-or-name
+    (or (demap-buffer-minimap minimap-or-name)
+        (error "No such demap-minimap: %s" minimap-or-name))) )
+
 (defun demap-minimap-buffer(minimap)
   "Return the buffer used by MINIMAP.
 this buffer can get killed when the minimap
