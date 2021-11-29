@@ -98,6 +98,11 @@ NAME overrides the defalt name defined by 'demap-defalt-buffer-name'."
   "Make and setup a buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
   (with-current-buffer (demap--generate-buffer (demap--generate-name name) buffer-show)
     (buffer-face-set 'demap-font-face)
+    (make-local-variable 'auto-hscroll-mode)
+    (setq vertical-scroll-bar nil
+          truncate-lines      t
+          buffer-read-only    t
+          auto-hscroll-mode   nil)
     (current-buffer) ))
 
 (defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
@@ -170,12 +175,12 @@ identical to (setf ('demap-minimap-buffer' MINIMAP) BUFFER-OR-NAME)"
   (setf (demap-minimap-buffer minimap) minimap-buffer) )
 
 (defun demap--unsafe-minimap-showing-set(minimap new-show)
-  ""
+  "Version of ('demap-minimap-showing-set' MINIMAP NEW-SHOW) without type check."
   (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
     (demap--minimap-swapout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
     (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
 
-(defun demap-minimap-showing(minimap-or-name)
+(defun demap-minimap-showing(&optional minimap-or-name)
   "Return the buffer that MINIMAP-OR-NAME is showing.
 if MINIMAP-OR-NAME is blank or dead, return nil."
   (let ((minimap (demap-normalize-minimap minimap-or-name)))
@@ -185,10 +190,9 @@ if MINIMAP-OR-NAME is blank or dead, return nil."
 (defun demap-minimap-showing-set(minimap-or-name buffer-or-name)
   "Set the buffer that minimap MINIMAP-OR-NAME is showing to BUFFER-OR-NAME.
 this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-NAME)"
-  (cl-assert (or (not buffer-or-name)
-                 (buffer-live-p (get-buffer buffer-or-name)) )
-                 t "Wrong type argument: stringp, %s" )
-  (demap--unsafe-minimap-showing-set (demap-normalize-minimap minimap-or-name) buffer-or-name)
+  (demap--unsafe-minimap-showing-set
+   (demap-normalize-minimap minimap-or-name)
+   (window-normalize-buffer buffer-or-name))
   buffer-or-name )
 
 (gv-define-setter demap-minimap-showing(buffer-or-name minimap-or-name)
