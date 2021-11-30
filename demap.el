@@ -57,11 +57,14 @@
 (defvar demap-minimap-change-functions nil
   "Hook to ran when changing what buffer a demap-minimap is showing.
 demap has to replace its buffer whenever it changes
-what it shadows. this hook is applied after
+what it shows. this hook is applied after
 everything has been moved to the new buffer but
-before the old one gets killed. the functions should
-take one argument (MINIMAP). MINIMAP is the minimap
-that is changing.")
+before the old one gets killed. the functions
+should take one argument (MINIMAP). MINIMAP is the
+minimap that is changing.
+sense the buffer will be deleted after this hook is
+applied, all local functions will only be applied
+once.")
 
 (defvar-local demap--current-minimap nil
   "The minimap associated with this buffer.")
@@ -83,41 +86,16 @@ BUFFER's new name is undefined."
 
 ;;minimap buffer
 
-(defun demap--generate-name(&optional name)
-  "Return a name that can be used for a minimap buffer.
-NAME overrides the defalt name defined by 'demap-defalt-buffer-name'."
-  (generate-new-buffer-name (or name demap-defalt-buffer-name)))
-
-(defun demap--generate-buffer(name &optional buffer-show)
-  "Make a new buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
-  (if buffer-show
-      (make-indirect-buffer buffer-show name)
-    (generate-new-buffer name) ))
-
-(defun demap--generate-minimap-buffer(&optional name buffer-show)
-  "Make and setup a buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
-  (with-current-buffer (demap--generate-buffer (demap--generate-name name) buffer-show)
-    (buffer-face-set 'demap-font-face)
-    (make-local-variable 'auto-hscroll-mode)
-    (setq vertical-scroll-bar nil
-          truncate-lines      t
-          buffer-read-only    t
-          auto-hscroll-mode   nil)
-    (current-buffer) ))
-
-(defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
-  "Make a copy of OLD-BUFFER-OR-NAME but have it show BUFFER-SHOW."
-  (demap--generate-minimap-buffer (demap--buffer-steal-name old-buffer-or-name) buffer-show) )
-
 (defun demap-buffer-minimap(&optional buffer-or-name)
   "Return the demap-minimap associated with BUFFER-OR-NAME.
 If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
   (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)))
 
+
 (defun demap--run-minimap-change-functions(buffer minimap)
   "Run hook 'demap-minimap-change-functions' has BUFFER, with MINIMAP."
   (with-current-buffer buffer
-    (run-hook-with-args demap-minimap-change-functions minimap) ))
+    (run-hook-with-args 'demap-minimap-change-functions minimap) ))
 
 (defun demap--kill-old-minimap-buffer(minimap-buffer minimap)
   "Kill buffer MINIMAP-BUFFER that used to be associated with MINIMAP."
@@ -126,12 +104,60 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
     (kill-buffer minimap-buffer) ))
 
 
+(defun demap--generate-name(&optional name)
+  "Return a name that can be used for a minimap buffer.
+NAME overrides the defalt name defined by 'demap-defalt-buffer-name'."
+  (generate-new-buffer-name (or name demap-defalt-buffer-name)))
+
+(defun demap--make-buffer(name &optional buffer-show)
+  "Make a new buffer with name NAME and showing BUFFER-SHOW."
+  (if buffer-show
+      (make-indirect-buffer buffer-show name)
+    (generate-new-buffer name) ))
+
+(defun demap--generate-buffer(name &optional buffer-show)
+  "Make a new buffer for demap-minimap using name NAME and showing BUFFER-SHOW."
+  (demap--make-buffer (demap--generate-name name) buffer-show) )
+
+;;TODO: make this less weird.
+(defun demap--set-buffer-varables()
+  "."
+  (make-local-variable 'auto-hscroll-mode)
+  (buffer-face-set 'demap-font-face)
+  (setq vertical-scroll-bar nil
+        truncate-lines      t
+        buffer-read-only    t
+        auto-hscroll-mode   nil))
+
+(defun demap--generate-minimap-buffer(&optional name buffer-show)
+  "Make and setup a buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
+  (with-current-buffer (demap--generate-buffer name buffer-show)
+    (demap--set-buffer-varables)
+    (current-buffer) ))
+
+(defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
+  "Make a copy of OLD-BUFFER-OR-NAME but have it show BUFFER-SHOW."
+  (demap--generate-minimap-buffer (demap--buffer-steal-name old-buffer-or-name) buffer-show) )
+
+
 ;;minimap object
+
+(defun demap-minimap-buffer(minimap)
+  "Return the buffer used by MINIMAP.
+this buffer can get killed when the minimap
+switches what buffer it is shadowing."
+  (nth 1 minimap))
+
 
 (defun demap-minimap-p(minimap)
   "Determin if MINIMAP is a demap-minimap."
   (and (listp minimap)
        (eq (car minimap) 'demap-minimap) ))
+
+(defun demap-minimap-live-p(minimap)
+  "Determin if MINIMAP is live."
+  (and (demap-minimap-p minimap)
+       (buffer-live-p (demap-minimap-buffer minimap)) ))
 
 (defun demap-normalize-minimap(minimap-or-name)
   "Return demap-minimap specified by MINIMAP-OR-NAME.
@@ -144,16 +170,6 @@ minimap for the current buffer."
     (or (demap-buffer-minimap minimap-or-name)
         (error "No such demap-minimap: %s" minimap-or-name))) )
 
-(defun demap-minimap-buffer(minimap)
-  "Return the buffer used by MINIMAP.
-this buffer can get killed when the minimap
-switches what buffer it is shadowing."
-  (nth 1 minimap))
-
-(defun demap-minimap-live-p(minimap)
-  "Determin if MINIMAP is live."
-  (and (demap-minimap-p minimap)
-       (buffer-live-p (demap-minimap-buffer minimap)) ))
 
 (defun demap--minimap-buffer-set(minimap buffer-or-name)
   "Set the buffer used by minimap MINIMAP to BUFFER-OR-NAME.
@@ -174,11 +190,6 @@ identical to (setf ('demap-minimap-buffer' MINIMAP) BUFFER-OR-NAME)"
   (demap--window-replace-buffer (demap-minimap-buffer minimap) minimap-buffer)
   (setf (demap-minimap-buffer minimap) minimap-buffer) )
 
-(defun demap--unsafe-minimap-showing-set(minimap new-show)
-  "Version of ('demap-minimap-showing-set' MINIMAP NEW-SHOW) without type check."
-  (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
-    (demap--minimap-swapout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
-    (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
 
 (defun demap-minimap-showing(&optional minimap-or-name)
   "Return the buffer that MINIMAP-OR-NAME is showing.
@@ -186,6 +197,12 @@ if MINIMAP-OR-NAME is blank or dead, return nil."
   (let ((minimap (demap-normalize-minimap minimap-or-name)))
     (when (demap-minimap-live-p minimap)
       (buffer-base-buffer (demap-minimap-buffer minimap)) )))
+
+(defun demap--unsafe-minimap-showing-set(minimap new-show)
+  "Version of ('demap-minimap-showing-set' MINIMAP NEW-SHOW) without type check."
+  (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
+    (demap--minimap-swapout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
+    (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
 
 (defun demap-minimap-showing-set(minimap-or-name buffer-or-name)
   "Set the buffer that minimap MINIMAP-OR-NAME is showing to BUFFER-OR-NAME.
