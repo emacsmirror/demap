@@ -91,8 +91,7 @@ BUFFER's new name is undefined."
 If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
   (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)))
 
-
-(defun demap--run-minimap-change-functions(buffer minimap)
+(defun demap--buffer-run-change-functions(buffer minimap)
   "Run hook 'demap-minimap-change-functions' has BUFFER, with MINIMAP."
   (with-current-buffer buffer
     (run-hook-with-args 'demap-minimap-change-functions minimap) ))
@@ -100,7 +99,7 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
 (defun demap--kill-old-minimap-buffer(minimap-buffer minimap)
   "Kill buffer MINIMAP-BUFFER that used to be associated with MINIMAP."
   (unwind-protect
-      (demap--run-minimap-change-functions minimap-buffer minimap)
+      (demap--buffer-run-change-functions minimap-buffer minimap)
     (kill-buffer minimap-buffer) ))
 
 
@@ -109,30 +108,26 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
 NAME overrides the defalt name defined by 'demap-defalt-buffer-name'."
   (generate-new-buffer-name (or name demap-defalt-buffer-name)))
 
-(defun demap--make-buffer(name &optional buffer-show)
-  "Make a new buffer with name NAME and showing BUFFER-SHOW."
+(defun demap--make-indirect-buffer(name &optional buffer-show)
+  "Make a new indirect buffer with name NAME and showing BUFFER-SHOW.
+if BUFFER-SHOW is nul then it returns a blank buffer."
   (if buffer-show
       (make-indirect-buffer buffer-show name)
     (generate-new-buffer name) ))
 
-(defun demap--generate-buffer(name &optional buffer-show)
+(defun demap--generate-buffer(&optional name buffer-show)
   "Make a new buffer for demap-minimap using name NAME and showing BUFFER-SHOW."
-  (demap--make-buffer (demap--generate-name name) buffer-show) )
-
-;;TODO: make this less weird.
-(defun demap--set-buffer-varables()
-  "."
-  (make-local-variable 'auto-hscroll-mode)
-  (buffer-face-set 'demap-font-face)
-  (setq vertical-scroll-bar nil
-        truncate-lines      t
-        buffer-read-only    t
-        auto-hscroll-mode   nil))
+  (demap--make-indirect-buffer (demap--generate-name name) buffer-show) )
 
 (defun demap--generate-minimap-buffer(&optional name buffer-show)
   "Make and setup a buffer for demap-minimap with name NAME and showing BUFFER-SHOW."
   (with-current-buffer (demap--generate-buffer name buffer-show)
-    (demap--set-buffer-varables)
+    (make-local-variable 'auto-hscroll-mode)
+    (buffer-face-set 'demap-font-face)
+    (setq vertical-scroll-bar nil
+          truncate-lines      t
+          buffer-read-only    t
+          auto-hscroll-mode   nil)
     (current-buffer) ))
 
 (defun demap--remake-minimap-buffer(old-buffer-or-name buffer-show)
@@ -147,7 +142,6 @@ NAME overrides the defalt name defined by 'demap-defalt-buffer-name'."
 this buffer can get killed when the minimap
 switches what buffer it is shadowing."
   (nth 1 minimap))
-
 
 (defun demap-minimap-p(minimap)
   "Determin if MINIMAP is a demap-minimap."
@@ -168,7 +162,14 @@ minimap for the current buffer."
   (if (demap-minimap-p minimap-or-name)
       minimap-or-name
     (or (demap-buffer-minimap minimap-or-name)
-        (error "No such demap-minimap: %s" minimap-or-name))) )
+        (error "No such demap-minimap: %s" minimap-or-name) )))
+
+(defun demap-minimap-showing(&optional minimap-or-name)
+  "Return the buffer that MINIMAP-OR-NAME is showing.
+if MINIMAP-OR-NAME is blank or dead, return nil."
+  (let ((minimap (demap-normalize-minimap minimap-or-name)))
+    (when (demap-minimap-live-p minimap)
+      (buffer-base-buffer (demap-minimap-buffer minimap)) )))
 
 
 (defun demap--minimap-buffer-set(minimap buffer-or-name)
@@ -180,23 +181,12 @@ identical to (setf ('demap-minimap-buffer' MINIMAP) BUFFER-OR-NAME)"
         (kill-local-variable 'demap--current-minimap) ))
     (with-current-buffer bfr
       (setq demap--current-minimap minimap) )
-    (setf (nth 1 minimap) bfr)))
-
-(gv-define-setter demap-minimap-buffer(buffer-or-name minimap)
-  `(demap--minimap-buffer-set ,minimap ,buffer-or-name))
+    (setf (nth 1 minimap) bfr) ))
 
 (defun demap--minimap-swapout-buffer(minimap minimap-buffer)
   "Replace the buffer in minimap MINIMAP with MINIMAP-BUFFER."
   (demap--window-replace-buffer (demap-minimap-buffer minimap) minimap-buffer)
-  (setf (demap-minimap-buffer minimap) minimap-buffer) )
-
-
-(defun demap-minimap-showing(&optional minimap-or-name)
-  "Return the buffer that MINIMAP-OR-NAME is showing.
-if MINIMAP-OR-NAME is blank or dead, return nil."
-  (let ((minimap (demap-normalize-minimap minimap-or-name)))
-    (when (demap-minimap-live-p minimap)
-      (buffer-base-buffer (demap-minimap-buffer minimap)) )))
+  (demap--minimap-buffer-set minimap minimap-buffer) )
 
 (defun demap--unsafe-minimap-showing-set(minimap new-show)
   "Version of ('demap-minimap-showing-set' MINIMAP NEW-SHOW) without type check."
@@ -211,6 +201,10 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
    (demap-normalize-minimap minimap-or-name)
    (window-normalize-buffer buffer-or-name))
   buffer-or-name )
+
+
+(gv-define-setter demap-minimap-buffer(buffer-or-name minimap)
+  `(demap--minimap-buffer-set ,minimap ,buffer-or-name))
 
 (gv-define-setter demap-minimap-showing(buffer-or-name minimap-or-name)
   `(demap-minimap-showing-set ,minimap-or-name ,buffer-or-name))
@@ -235,66 +229,70 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   "Get the overlay object used by demap-region REGION."
   (nth 1 region) )
 
-(defun demap-region-overlay-set(region overlay)
-  "Set the overlay used by REGION to OVERLAY."
-  (setf (nth 1 region) overlay) )
-
-(gv-define-setter demap-region-overlay(overlay region)
-  `(demap-region-overlay-set ,region ,overlay))
-
+(defun demap-region-change-f(region)
+  "Get the function called when REGION's minimap change."
+  (nth 2 region) )
 
 (defun demap-region-buffer(region)
   "Get the buffer that REGION is in."
   (overlay-buffer (demap-region-overlay region)) )
 
-(defun demap-region-buffer-set(region buffer)
-  "Set the buffer that REGION is in to BUFFER."
-  (move-overlay (demap-region-overlay region) 0 50 buffer)
-  buffer )
-
-(gv-define-setter demap-region-buffer(buffer region)
-  `(demap-region-buffer-set ,region ,buffer))
-
-
 (defun demap-region-minimap(region)
   "Get the demap-minimap that REGION is in."
   (demap-buffer-minimap (demap-region-buffer region)) )
 
+
+(defun demap-region-change-f-attach(region)
+  ""
+  (with-current-buffer (demap-region-buffer region)
+    (add-hook 'demap-minimap-change-functions (demap-region-change-f region) 0 t) ))
+
+(defun demap-region-change-f-dettach(region)
+  ""
+  (with-current-buffer (demap-region-buffer region)
+    (remove-hook 'demap-minimap-change-functions (demap-region-change-f region) t) ))
+
+(defun demap-region-change-f-wraper(region)
+  ""
+  (apply-partially #'demap-region-minimap-set region))
+
+
+(defun demap--region-overlay-set(region overlay)
+  "Set the overlay used by REGION to OVERLAY."
+  (setf (nth 1 region) overlay) )
+
+(defun demap-region-change-f-set(region function)
+  "Set the function called when REGION's minimap change to FUNCTION."
+  (when (demap-region-change-f region)
+    (demap-region-change-f-dettach region) )
+  (setf (nth 2 region) function)
+  (demap-region-change-f-attach region)
+  function )
+
+(defun demap--region-buffer-set(region buffer)
+  "Set the buffer that REGION is in to BUFFER."
+  (demap-region-change-f-dettach region)
+  (move-overlay (demap-region-overlay region) 0 50 buffer)
+  (demap-region-change-f-attach region)
+  buffer )
+
 (defun demap-region-minimap-set(region minimap)
   "Set the demap-minimap that REGION is in to MINIMAP."
-  (setf (demap-region-buffer region) (demap-minimap-buffer minimap))
+  (demap--region-buffer-set region (demap-minimap-buffer minimap))
   minimap )
+
+
+(gv-define-setter demap-region-overlay(overlay region)
+  `(demap--region-overlay-set ,region ,overlay))
+
+(gv-define-setter demap-region-buffer(buffer region)
+  `(demap--region-buffer-set ,region ,buffer))
 
 (gv-define-setter demap-region-minimap(minimap region)
   `(demap-region-minimap-set ,region ,minimap))
 
-
-(defun demap-region-change-f(region)
-  "Get the function called when REGION's minimap change."
-  (nth 2 region) )
-
-(defun demap-region-change-f-set(region function)
-  "Set the function called when REGION's minimap change to FUNCTION."
-  (setf (nth 2 region) function) )
-
 (gv-define-setter demap-region-change-f(function region)
   `(demap-region-change-f-set ,region ,function))
-
-
-(defun demap-region-add-change-f(region minimap)
-  "Add change-f of REGION to 'demap-minimap-change-function' in MINIMAP."
-  (with-current-buffer (demap-minimap-buffer minimap)
-    (add-hook 'demap-minimap-change-functions (demap-region-change-f region) 0 t) ))
-
-(defun demap--region-follow-loop(region minimap)
-  "Put REGION into MINIMAP and follow it if MINIMAP change."
-  (setf (demap-region-minimap region) minimap)
-  (demap-region-add-change-f region minimap) )
-
-(defun demap-region-follow(region minimap)
-  "."
-  (setf (demap-region-change-f region) (apply-partially #'demap--region-follow-loop region))
-  (demap-region-add-change-f region minimap) )
 
 
 (defun demap--generate-overlay(buffer)
@@ -309,11 +307,18 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 
 (defun demap-generate-region(minimap)
-  "Make a new overlay object for MINIMAP."
+  "Make a new overlay object for MINIMAP using CHANGE-FUNCTION."
   (let ((region '(demap-region nil nil)))
-    (setf (demap-region-overlay region) (demap--generate-region-overlay minimap))
-    (demap-region-follow region minimap)
+    (setf (demap-region-overlay region) (demap--generate-region-overlay minimap)
+          (demap-region-change-f region) (demap-region-change-f-wraper region) )
     region ))
+
+
+
+(defun demap-generate-test-region(minimap)
+  "."
+  (demap-generate-region minimap) )
+
 
 (provide 'demap)
 ;;; demap.el ends here
