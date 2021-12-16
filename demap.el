@@ -365,5 +365,37 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
     region ))
 
 
+;;fallow mode
+
+(defvar-local demap-fallow-mode nil)
+
+
+(defun demap--fallow-init()
+  "Initalize demap-fallow-mode."
+  (message "initing")
+  (setq demap-fallow-mode t) )
+
+(defun demap--fallow-close()
+  "Initalize demap-fallow-mode."
+  (message "closeing")
+  (setq demap-fallow-mode nil) )
+
+
+(defun demap--should-toggle-mode-p(mode arg)
+  "Determin if mode MODE should toggle if passed ARG."
+  (or (eq arg 'toggle)
+      (xor (> (prefix-numeric-value arg) 0) mode) ))
+
+(defun demap-fallow-mode(&optional arg)
+  "Toggle demap-minimap-minermode ARG."
+  (interactive (list (or current-prefix-arg 'toggle)))
+  ;(cl-assert (demap-buffer-minimap) nil "demap-fallow-mode only works on a demap-minimap buffer.")
+  (when (demap--should-toggle-mode-p demap-fallow-mode arg)
+    (if demap-fallow-mode
+        (demap--fallow-close)
+      (demap--fallow-init) )))
+
+
+
 (provide 'demap)
 ;;; demap.el ends here
