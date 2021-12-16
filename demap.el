@@ -233,6 +233,10 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   "Get the function called when REGION's minimap change."
   (nth 2 region) )
 
+(defun demap-region-update-f(region)
+  "Get the function called when REGION needs to update its placement."
+  (nth 3 region))
+
 (defun demap-region-buffer(region)
   "Get the buffer that REGION is in."
   (overlay-buffer (demap-region-overlay region)) )
@@ -252,16 +256,24 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   (with-current-buffer (demap-region-buffer region)
     (remove-hook 'demap-minimap-change-functions (demap-region-change-f region) t) ))
 
-(defun demap-region-change-f-wraper(region)
+(defun demap--region-update-f-call-move(region buffer)
   ""
-  (apply-partially #'demap-region-minimap-set region))
+  (funcall (demap-region-update-f region) region buffer))
+
+(defun demap-region-update-f-call(region)
+  ""
+  (demap--region-update-f-call-move region (demap-region-buffer region)) )
+
+(defun demap-region-update-f-defalt(region buffer)
+  ""
+  (move-overlay (demap-region-overlay region) 0 50 buffer) )
 
 
 (defun demap--region-overlay-set(region overlay)
   "Set the overlay used by REGION to OVERLAY."
   (setf (nth 1 region) overlay) )
 
-(defun demap-region-change-f-set(region function)
+(defun demap--region-change-f-set(region function)
   "Set the function called when REGION's minimap change to FUNCTION."
   (when (demap-region-change-f region)
     (demap-region-change-f-dettach region) )
@@ -269,10 +281,14 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   (demap-region-change-f-attach region)
   function )
 
+(defun demap-region-update-f-set(region overlay)
+  "Set the overlay used by REGION to OVERLAY."
+  (setf (nth 3 region) overlay) )
+
 (defun demap--region-buffer-set(region buffer)
   "Set the buffer that REGION is in to BUFFER."
   (demap-region-change-f-dettach region)
-  (move-overlay (demap-region-overlay region) 0 50 buffer)
+  (demap--region-update-f-call-move region buffer)
   (demap-region-change-f-attach region)
   buffer )
 
@@ -285,14 +301,17 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 (gv-define-setter demap-region-overlay(overlay region)
   `(demap--region-overlay-set ,region ,overlay))
 
+(gv-define-setter demap-region-change-f(funct region)
+  `(demap--region-change-f-set ,region ,funct))
+
+(gv-define-setter demap-region-update-f(funct region)
+  `(demap-region-update-f-set ,region ,funct))
+
 (gv-define-setter demap-region-buffer(buffer region)
   `(demap--region-buffer-set ,region ,buffer))
 
 (gv-define-setter demap-region-minimap(minimap region)
   `(demap-region-minimap-set ,region ,minimap))
-
-(gv-define-setter demap-region-change-f(function region)
-  `(demap-region-change-f-set ,region ,function))
 
 
 (defun demap--generate-overlay(buffer)
@@ -305,19 +324,45 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   "Generate region for demap-region in minimap MINIMAP."
   (demap--generate-overlay (demap-minimap-buffer minimap)) )
 
+(defun demap--genorate-region-change-f(region)
+  ""
+  (apply-partially #'demap-region-minimap-set region))
+
+(defun demap--genorate-region-update-f()
+  ""
+  #'demap-region-update-f-defalt )
+
 
 (defun demap-generate-region(minimap)
   "Make a new overlay object for MINIMAP using CHANGE-FUNCTION."
-  (let ((region '(demap-region nil nil)))
+  (let ((region '(demap-region nil nil nil)))
     (setf (demap-region-overlay region) (demap--generate-region-overlay minimap)
-          (demap-region-change-f region) (demap-region-change-f-wraper region) )
+          (demap-region-change-f region) (demap--genorate-region-change-f region)
+          (demap-region-update-f region) (demap--genorate-region-update-f) )
     region ))
 
 
+;;page and line
+
+(defun demap-page-region-update-f(region buffer)
+  ""
+  (move-overlay (demap-region-overlay region)
+                (window-start)
+                (window-end nil t)
+                buffer ))
+
+(defun demap-line-region-update-f(region buffer)
+  ""
+  (move-overlay (demap-region-overlay region)
+                (line-beginning-position)
+                (line-end-position)
+                buffer ))
 
 (defun demap-generate-test-region(minimap)
-  "."
-  (demap-generate-region minimap) )
+  ""
+  (let ((region (demap-generate-region minimap)))
+    (setf (demap-region-update-f region) #'demap-test-update-f)
+    region ))
 
 
 (provide 'demap)
