@@ -140,17 +140,44 @@ if BUFFER-SHOW is nul then it returns a blank buffer."
 
 (cl-defstruct (demap-minimap
                (:copier nil)
-               (:constructor nil)
-               (:constructor demap-minimap-construct
-                (&key (name)
-                 &aux (buffer (demap--generate-minimap-buffer name)) )))
-  (buffer nil :type 'buffer) )
+               (:constructor demap--minimap-construct) )
+  (buffer nil
+          :type 'buffer
+          :documentation "The buffer associated with demap-minimap.
+this slot is read only") )
 
 
 (defun demap-minimap-live-p(minimap)
   "Determin if MINIMAP is live."
   (and (demap-minimap-p minimap)
        (buffer-live-p (demap-minimap-buffer minimap)) ))
+
+
+(defun demap--minimap-buffer-init-set(minimap minimap-buffer)
+  "Set the buffer used ny MINIMAP to MINIMAP-BUFFER.
+MINIMAP must be dead."
+  (with-current-buffer minimap-buffer
+    (setq demap--current-minimap minimap) )
+  (setf (demap-minimap-buffer minimap) minimap-buffer) )
+
+(defun demap--minimap-buffer-set(minimap minimap-buffer)
+  "Set the buffer used by minimap MINIMAP to MINIMAP-BUFFER."
+  (when (demap-minimap-live-p minimap)
+    (with-current-buffer (demap-minimap-buffer minimap)
+      (kill-local-variable 'demap--current-minimap) ))
+  (demap--minimap-buffer-init-set minimap minimap-buffer) )
+
+(defun demap--minimap-swapout-buffer(minimap minimap-buffer)
+  "Replace the buffer in minimap MINIMAP with MINIMAP-BUFFER."
+  (demap--window-replace-buffer (demap-minimap-buffer minimap) minimap-buffer)
+  (demap--minimap-buffer-set minimap minimap-buffer) )
+
+(defun demap--unsafe-minimap-showing-set(minimap new-show)
+  "Version of ('demap-minimap-showing-set' MINIMAP NEW-SHOW) without type check."
+  (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
+    (demap--minimap-swapout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
+    (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
+
 
 (defun demap-normalize-minimap(minimap-or-name)
   "Return demap-minimap specified by MINIMAP-OR-NAME.
@@ -164,34 +191,11 @@ current buffer."
         (error "No such demap-minimap: %s" minimap-or-name) )))
 
 (defun demap-minimap-showing(&optional minimap-or-name)
-  "Return the buffer that MINIMAP-OR-NAME is showing.
+  "Access the buffer that MINIMAP-OR-NAME is showing.
 if MINIMAP-OR-NAME is blank or dead, return nil."
   (let ((minimap (demap-normalize-minimap minimap-or-name)))
     (when (demap-minimap-live-p minimap)
       (buffer-base-buffer (demap-minimap-buffer minimap)) )))
-
-
-(defun demap--minimap-buffer-set(minimap buffer-or-name)
-  "Set the buffer used by minimap MINIMAP to BUFFER-OR-NAME.
-identical to (setf ('demap-minimap-buffer' MINIMAP) BUFFER-OR-NAME)"
-  (let ((buffer (window-normalize-buffer buffer-or-name)))
-    (when (demap-minimap-live-p minimap)
-      (with-current-buffer (demap-minimap-buffer minimap)
-        (kill-local-variable 'demap--current-minimap) ))
-    (with-current-buffer buffer
-      (setq demap--current-minimap minimap) )
-    (setf (demap-minimap-buffer minimap) buffer) ))
-
-(defun demap--minimap-swapout-buffer(minimap minimap-buffer)
-  "Replace the buffer in minimap MINIMAP with MINIMAP-BUFFER."
-  (demap--window-replace-buffer (demap-minimap-buffer minimap) minimap-buffer)
-  (demap--minimap-buffer-set minimap minimap-buffer) )
-
-(defun demap--unsafe-minimap-showing-set(minimap new-show)
-  "Version of ('demap-minimap-showing-set' MINIMAP NEW-SHOW) without type check."
-  (let ((old-minimap-buffer (demap-minimap-buffer minimap)))
-    (demap--minimap-swapout-buffer minimap (demap--remake-minimap-buffer old-minimap-buffer new-show))
-    (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
 
 (defun demap-minimap-showing-set(minimap-or-name buffer-or-name)
   "Set the buffer that minimap MINIMAP-OR-NAME is showing to BUFFER-OR-NAME.
@@ -201,9 +205,15 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
    (window-normalize-buffer buffer-or-name))
   buffer-or-name )
 
-
 (gv-define-setter demap-minimap-showing(buffer-or-name minimap-or-name)
   `(demap-minimap-showing-set ,minimap-or-name ,buffer-or-name))
+
+
+(defun demap-minimap-construct(&optional name)
+  "Construct a demap-minimap with name NAME."
+  (let ((minimap (demap--minimap-construct)))
+    (demap--minimap-buffer-init-set minimap (demap--generate-minimap-buffer name))
+    minimap ))
 
 
 ;;minimap region
