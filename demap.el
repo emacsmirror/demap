@@ -83,6 +83,22 @@ BUFFER's new name is undefined."
       (rename-buffer "-old minimap buffer-" t)
       name )))
 
+(defun demap--smart-remove-hook-local(hook func buffer)
+  "Remove the function FUNC from the buffer-local value of HOOK as BUFFER.
+see 'remove-hook'"
+  (with-current-buffer buffer
+    (remove-hook hook func t) ))
+
+(defun demap--smart-add-hook(hook func &optional depth local)
+  "Add to the value of HOOK the function FUNC and return cleanup function.
+returns a function that, when called, removes FUNC from HOOK.
+this function excepts no arguments.
+for DEPTH and LOCAL see 'add-hook'"
+  (add-hook hook func depth local)
+  (if local
+      (apply-partially 'demap--smart-remove-hook-local hook func (current-buffer))
+    (apply-partially 'remove-hook hook func) ))
+
 
 ;;minimap buffer
 
@@ -144,7 +160,8 @@ if BUFFER-SHOW is nul then it returns a blank buffer."
   (buffer nil
           :type 'buffer
           :documentation "The buffer associated with demap-minimap.
-this slot is read only") )
+this slot is read only.")
+  (-cleanup-func nil))
 
 
 (defun demap-minimap-live-p(minimap)
@@ -179,6 +196,22 @@ MINIMAP must be dead."
     (demap--kill-old-minimap-buffer old-minimap-buffer minimap) ))
 
 
+(defun demap--minimap-call-cleanup(minimap)
+  "Cleanup the hooks MINIMAP use to update.
+see 'demap--minimap-update-hook-set'"
+  (let ((fun (demap-minimap--cleanup-func minimap)))
+    (when fun
+      (apply fun) )))
+
+(defun demap--minimap-smart-add-hook-update(minimap hook-or-nil &optional depth local)
+  "Add MINIMAP's update function to HOOK-OR-NIL and return a cleanup function.
+if HOOK-OR-NIL is nil then do nuthing and return nil.
+for more info see 'demap--smart-add-hook' and for
+DEPTH and LOCAL see 'add-hook'."
+  (when hook-or-nil
+    (demap--smart-add-hook hook-or-nil (apply-partially #'demap-minimap-update-window minimap) depth local)))
+
+
 (defun demap-normalize-minimap(minimap-or-name)
   "Return demap-minimap specified by MINIMAP-OR-NAME.
 MINIMAP-OR-NAME must be a live minimap, a live
@@ -209,10 +242,36 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   `(demap-minimap-showing-set ,minimap-or-name ,buffer-or-name))
 
 
+(defun demap-minimap-update-hook-set(minimap-or-name hook-or-nil &optional depth local)
+  "Add MINIMAP-OR-NAME's update function to HOOK-OR-NIL and remember it.
+when this is set, the update funtion is removed
+from the old hook and placed in the new one. if
+HOOK-OR-NIL is nil then the update function is only
+removed.
+for DEPTH and LOCAL are passed to 'add-hook'."
+  (let ((minimap (demap-normalize-minimap minimap-or-name)))
+    (demap--minimap-call-cleanup minimap)
+    (setf
+     (demap-minimap--cleanup-func minimap)
+     (demap--minimap-smart-add-hook-update minimap hook-or-nil depth local) )))
+
+(defun demap-minimap-update-p(minimap)
+  "Determin if demap-minimap MINIMAP can fallow the current window."
+  (ignore minimap)
+  (buffer-file-name (window-buffer)))
+
+(defun demap-minimap-update-window(minimap)
+  "Update whet window demap-minimap MINIMAP is showing."
+  (when (demap-minimap-update-p minimap)
+    (setf (demap-minimap-showing minimap) (window-buffer)) ))
+
+
+
 (defun demap-minimap-construct(&optional name)
   "Construct a demap-minimap with name NAME."
   (let ((minimap (demap--minimap-construct)))
     (demap--minimap-buffer-init-set minimap (demap--generate-minimap-buffer name))
+    (demap-minimap-update-hook-set  minimap 'window-state-change-hook)
     minimap ))
 
 
@@ -362,38 +421,6 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   (let ((region (demap-generate-region minimap)))
     (setf (demap-region-update-f region) #'demap-test-update-f)
     region ))
-
-
-;;fallow mode
-
-(defvar-local demap-fallow-mode nil)
-
-
-(defun demap--fallow-init()
-  "Initalize demap-fallow-mode."
-  (message "initing")
-  (setq demap-fallow-mode t) )
-
-(defun demap--fallow-close()
-  "Initalize demap-fallow-mode."
-  (message "closeing")
-  (setq demap-fallow-mode nil) )
-
-
-(defun demap--should-toggle-mode-p(mode arg)
-  "Determin if mode MODE should toggle if passed ARG."
-  (or (eq arg 'toggle)
-      (xor (> (prefix-numeric-value arg) 0) mode) ))
-
-(defun demap-fallow-mode(&optional arg)
-  "Toggle demap-minimap-minermode ARG."
-  (interactive (list (or current-prefix-arg 'toggle)))
-  ;(cl-assert (demap-buffer-minimap) nil "demap-fallow-mode only works on a demap-minimap buffer.")
-  (when (demap--should-toggle-mode-p demap-fallow-mode arg)
-    (if demap-fallow-mode
-        (demap--fallow-close)
-      (demap--fallow-init) )))
-
 
 
 (provide 'demap)
