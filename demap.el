@@ -182,11 +182,33 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
   (let ((old-buffer (demap-minimap-buffer minimap)))
     (when old-buffer
       (with-current-buffer old-buffer
-        (kill-local-variable 'demap--current-minimap) )))
-  (setf (demap-minimap-buffer minimap) new-buffer)
-  (with-current-buffer new-buffer
-    (setq-local demap--current-minimap minimap) ))
+        (kill-local-variable 'demap--current-minimap) ))
+    (setf (demap-minimap-buffer minimap) new-buffer)
+    (with-current-buffer new-buffer
+      (setq-local demap--current-minimap minimap) )
+    (when old-buffer
+      (kill-buffer old-buffer) )
+    (demap--make-ukill minimap) ))
 
+;;minimap testing ------------
+
+(defun demap--make-ukill-call(minimap h)
+  ""
+  (message "commiting ukill %s" (demap-minimap-showing minimap))
+  (demap-minimap-showing-set minimap h))
+
+(defun demap--make-ukill(minimap)
+  ""
+  (message "-ukilling-")
+  (when (demap-minimap-showing minimap)
+    (message "ukilling: %s" (demap-minimap-showing minimap))
+    (demap--add-hook-local 'kill-buffer-hook
+                           (demap--smart-add-hook-local 'kill-buffer-hook
+                                                        (apply-partially #'demap--make-ukill-call minimap nil)
+                                                        nil (demap-minimap-showing minimap) )
+                           nil (demap-minimap-buffer minimap) )))
+
+;;----------------------------
 
 ;;minimap showing
 
@@ -202,8 +224,7 @@ if MINIMAP-OR-NAME is blank or dead, return nil."
   (let (new-buffer old-buffer)
     (setq old-buffer (demap-minimap-buffer minimap))
     (setq new-buffer (demap--minimap-buffer-reconstruct minimap new-show))
-    (demap--minimap-buffer-set minimap new-buffer)
-    (kill-buffer old-buffer)))
+    (demap--minimap-buffer-set minimap new-buffer) ))
 
 (defun demap-minimap-showing-set(minimap-or-name &optional buffer-or-name)
   "Set the buffer that minimap MINIMAP-OR-NAME is showing to BUFFER-OR-NAME.
