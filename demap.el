@@ -77,38 +77,41 @@ once.")
   (dolist (window (get-buffer-window-list buffer-or-name t t))
     (set-window-buffer window new-buffer-or-name t) ))
 
-(defun demap--buffer-steal-name(buffer)
-  "Rename BUFFER and return its old name.
-BUFFER's new name is undefined."
-  (with-current-buffer buffer
+(defun demap--buffer-steal-name(buffer-or-name)
+  "Rename BUFFER-OR-NAME and return its old name.
+BUFFER-OR-NAME's new name is undefined."
+  (with-current-buffer buffer-or-name
     (let ((name (buffer-name)))
       (rename-buffer "-old minimap buffer-" t)
       name )))
 
 
-(defun demap--remove-hook-local(hook func buffer)
+(defun demap--remove-hook-local(hook func &optional buffer)
   "Remove the function FUNC from the buffer-local value of HOOK as BUFFER.
-see 'remove-hook'"
+see `remove-hook'."
   (with-current-buffer buffer
     (remove-hook hook func t) ))
 
 (defun demap--add-hook-local(hook func &optional depth buffer)
-  ""
+  "Add the function FUNC to the buffer-local value of HOOK as BUFFER.
+see `add-hook'."
   (with-current-buffer buffer
     (add-hook hook func depth t) ))
 
 (defun demap--smart-add-hook(hook func &optional depth local)
-  "Add to the value of HOOK the function FUNC and return cleanup function.
+  "Add to the value of HOOK the function FUNC and return a cleanup function.
 returns a function that, when called, removes FUNC from HOOK.
 this function excepts no arguments.
-for DEPTH and LOCAL see 'add-hook'"
+for DEPTH and LOCAL, see `add-hook'."
   (add-hook hook func depth local)
   (if local
       (apply-partially 'demap--remove-hook-local hook func (current-buffer))
     (apply-partially 'remove-hook hook func) ))
 
 (defun demap--smart-add-hook-local(hook func &optional depth buffer)
-  ""
+  "Add the function FUNC to the buffer-local value of HOOK as BUFFER.
+returns a function that removes FUNC from HOOK when called.
+for DEPTH, see `add-hook'."
   (with-current-buffer buffer
     (demap--smart-add-hook hook func depth t) ))
 
@@ -127,23 +130,25 @@ this slot is read only.")
 this slot is read only"))
 
 (defun demap-normalize-minimap(minimap-or-name)
-  "Return demap-minimap specified by MINIMAP-OR-NAME.
+  "Return the demap-minimap specified by MINIMAP-OR-NAME.
 MINIMAP-OR-NAME must be a live minimap, a live
 minimap-buffer, a string naming a live minimap or
 nil which means to return the minimap for the
-current buffer."
+current buffer's minimap."
   (if (demap-minimap-p minimap-or-name)
       minimap-or-name
     (or (demap-buffer-minimap minimap-or-name)
         (error "No such demap-minimap: %s" minimap-or-name) )))
 
 (defun demap-minimap-live-p(minimap)
-  "Determin if MINIMAP is live."
+  "Return t if MINIMAP is a demap-minimap which has not been killed.
+Value is nil if MINIMAP is not a demap-minimap or if it has been killed."
   (and (demap-minimap-p minimap)
        (buffer-live-p (demap-minimap-buffer minimap)) ))
 
 (defun demap--minimap-generate-new-name (&optional name)
-  ""
+  "Return a name not used by any buffer based on NAME.
+defalt to `demap-defalt-buffer-name'."
   (generate-new-buffer-name (or name demap-defalt-buffer-name)) )
 
 
@@ -154,12 +159,26 @@ current buffer."
 If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
   (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)))
 
-(defun demap--minimap-buffer-construct(&optional name new-show)
-  ""
+
+(defun demap--minimap-protect-from-base(minimap)
+  "Make it so the buffer MINIMAP is showing can not accidentally kill MINIMAP.
+without this, killing the buffer that MINIMAP is showing will kill MINIMAP.
+this will make MINIMAP change to a blank buffer instead."
+  (when (demap-minimap-showing minimap)
+    (demap--add-hook-local 'kill-buffer-hook
+                           (demap--smart-add-hook-local 'kill-buffer-hook
+                                                        (apply-partially #'demap-minimap-showing-set minimap nil)
+                                                        nil (demap-minimap-showing minimap) )
+                           nil (demap-minimap-buffer minimap) )))
+
+(defun demap--minimap-buffer-construct(&optional name show)
+  "Construct a buffer that demap-minimap can use, using NAME and showing SHOW.
+name defalts to `demap-defalt-buffer-name' and show
+defalts to a blank buffer."
   (let (buffer)
     (setq name (demap--minimap-generate-new-name name))
-    (setq buffer (if new-show
-                     (make-indirect-buffer new-show name)
+    (setq buffer (if show
+                     (make-indirect-buffer show name)
                    (generate-new-buffer name) ))
     (with-current-buffer buffer
       (setq-local auto-hscroll-mode nil)
@@ -170,7 +189,9 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
       buffer)))
 
 (defun demap--minimap-buffer-reconstruct(minimap &optional new-show)
-  ""
+  "Reconstruct the buffer used by MINIMAP but have it show NEW-SHOW.
+this will take the buffers name and any window that buffer was in.
+the new buffer will be returned but not assigned to MINIMAP."
   (let (new-buffer old-buffer)
     (setq old-buffer (demap-minimap-buffer minimap))
     (setq new-buffer (demap--minimap-buffer-construct (demap--buffer-steal-name old-buffer) new-show) )
@@ -178,7 +199,8 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
     new-buffer))
 
 (defun demap--minimap-buffer-set(minimap new-buffer)
-  ""
+  "Set the buffer used by MINIMAP to NEW-BUFFER.
+the old buffer will be killed."
   (let ((old-buffer (demap-minimap-buffer minimap)))
     (when old-buffer
       (with-current-buffer old-buffer
@@ -188,48 +210,32 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
       (setq-local demap--current-minimap minimap) )
     (when old-buffer
       (kill-buffer old-buffer) )
-    (demap--make-ukill minimap) ))
+    (demap--minimap-protect-from-base minimap) ))
 
-;;minimap testing ------------
-
-(defun demap--make-ukill-call(minimap h)
-  ""
-  (message "commiting ukill %s" (demap-minimap-showing minimap))
-  (demap-minimap-showing-set minimap h))
-
-(defun demap--make-ukill(minimap)
-  ""
-  (message "-ukilling-")
-  (when (demap-minimap-showing minimap)
-    (message "ukilling: %s" (demap-minimap-showing minimap))
-    (demap--add-hook-local 'kill-buffer-hook
-                           (demap--smart-add-hook-local 'kill-buffer-hook
-                                                        (apply-partially #'demap--make-ukill-call minimap nil)
-                                                        nil (demap-minimap-showing minimap) )
-                           nil (demap-minimap-buffer minimap) )))
-
-;;----------------------------
 
 ;;minimap showing
 
 (defun demap-minimap-showing(&optional minimap-or-name)
   "Access the buffer that MINIMAP-OR-NAME is showing.
-if MINIMAP-OR-NAME is blank or dead, return nil."
+if MINIMAP-OR-NAME is blank or dead, return nil.
+note that a demap-minimap can have a blank buffer
+without being dead, don't rely on live minimaps
+returning a buffer."
   (let ((minimap (demap-normalize-minimap minimap-or-name)))
     (when (demap-minimap-live-p minimap)
       (buffer-base-buffer (demap-minimap-buffer minimap)) )))
 
-(defun demap-minimap-showing-set-unchecked(minimap &optional new-show)
-  "Version of ('demap-minimap-showing-set' MINIMAP NEW-SHOW) without type checking."
-  (let (new-buffer old-buffer)
-    (setq old-buffer (demap-minimap-buffer minimap))
-    (setq new-buffer (demap--minimap-buffer-reconstruct minimap new-show))
+(defun demap-minimap-showing-set-unchecked(minimap &optional buffer)
+  "Set the buffer that MINIMAP is showing to BUFFER.
+Version of (`demap-minimap-showing-set' MINIMAP BUFFER) without type checking.
+if BUFFER is nil, then the buffer will be blank."
+  (let ((new-buffer (demap--minimap-buffer-reconstruct minimap buffer)))
     (demap--minimap-buffer-set minimap new-buffer) ))
 
 (defun demap-minimap-showing-set(minimap-or-name &optional buffer-or-name)
   "Set the buffer that minimap MINIMAP-OR-NAME is showing to BUFFER-OR-NAME.
 if BUFFER-OR-NAME is nil, then the buffer will be blank.
-this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-NAME)"
+this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-NAME)"
   (let ((minimap (demap-normalize-minimap minimap-or-name))
         (new-show (and buffer-or-name (window-normalize-buffer buffer-or-name))) )
     (demap-minimap-showing-set-unchecked minimap new-show) )
@@ -241,6 +247,13 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 ;;minimap update
 
+(defun demap--minimap--cleanup-func-call(minimap)
+  "Cleanup the hooks MINIMAP use to update.
+see `demap--minimap-update-hook-set'"
+  (let ((fun (demap-minimap--cleanup-func minimap)))
+    (when fun
+      (funcall fun) )))
+
 (defun demap-minimap-update-p(minimap)
   "Determin if demap-minimap MINIMAP can fallow the current window."
   (ignore minimap)
@@ -248,30 +261,24 @@ this is equivalent to (setf ('demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 (defun demap-minimap-update(minimap)
   "Update whet window demap-minimap MINIMAP is showing."
-  (when (demap-minimap-update-p minimap)
-    (setf (demap-minimap-showing minimap) (window-buffer)) ))
+  (if (demap-minimap-live-p minimap)
+      (when (demap-minimap-update-p minimap)
+        (setf (demap-minimap-showing minimap) (window-buffer)) )
+    (demap--minimap--cleanup-func-call minimap)))
 
 (defun demap-minimap-update-construct(minimap)
-  ""
+  "Return a function that will update MINIMAP when called.
+this function will accept no arguments. this is for
+adding to hooks."
   (apply-partially #'demap-minimap-update minimap))
-
-
-;;minimap fallow
-
-(defun demap--minimap--cleanup-func-call(minimap)
-  "Cleanup the hooks MINIMAP use to update.
-see 'demap--minimap-update-hook-set'"
-  (let ((fun (demap-minimap--cleanup-func minimap)))
-    (when fun
-      (funcall fun) )))
 
 (defun demap-minimap-update-hook-set(minimap-or-name &optional hook depth local)
   "Add MINIMAP-OR-NAME's update function to HOOK and remember it.
-when this is set, the update funtion is removed
+when this is set, the update function is removed
 from the old hook and placed in the new one. if
 HOOK is nil then it only removes the update
-function.
-for DEPTH and LOCAL are passed to 'add-hook'."
+function, disabling automatic updating.
+DEPTH and LOCAL are passed to `add-hook'."
   (let (minimap update-func claen-func)
     (setf minimap     (demap-normalize-minimap minimap-or-name)
           update-func (demap-minimap-update-construct minimap)
