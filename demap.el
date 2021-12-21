@@ -155,10 +155,7 @@ for DEPTH, see `add-hook'."
   (buffer nil
           :type 'buffer
           :documentation "The buffer associated with demap-minimap.
-this slot is read only.")
-  (-cleanup-func nil
-                 :documentation "a function when called, removes the update function from the hook it is in.
-this slot is read only"))
+this slot is read only."))
 
 (defun demap-normalize-minimap(minimap-or-name)
   "Return the demap-minimap specified by MINIMAP-OR-NAME.
@@ -304,12 +301,7 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 ;;minimap update
 
-(defun demap--minimap--cleanup-func-call(minimap)
-  "Cleanup the hooks MINIMAP use to update.
-see `demap--minimap-update-hook-set'"
-  (let ((fun (demap-minimap--cleanup-func minimap)))
-    (when fun
-      (funcall fun) )))
+
 
 (defun demap-minimap-update-p(minimap)
   "Determin if demap-minimap MINIMAP can fallow the current window."
@@ -318,31 +310,27 @@ see `demap--minimap-update-hook-set'"
 
 (defun demap-minimap-update(minimap)
   "Update whet window demap-minimap MINIMAP is showing."
-  (if (demap-minimap-live-p minimap)
-      (when (demap-minimap-update-p minimap)
-        (setf (demap-minimap-showing minimap) (window-buffer)) )
-    (demap--minimap--cleanup-func-call minimap)))
+  (when (demap-minimap-update-p minimap)
+    (setf (demap-minimap-showing minimap) (window-buffer)) ))
 
-(defun demap-minimap-update-construct(minimap)
-  "Return a function that will update MINIMAP when called.
-this function will accept no arguments. this is for
-adding to hooks."
-  (apply-partially #'demap-minimap-update minimap))
 
-(defun demap-minimap-update-hook-set(minimap-or-name &optional hook depth local)
-  "Add MINIMAP-OR-NAME's update function to HOOK and remember it.
-when this is set, the update function is removed
-from the old hook and placed in the new one. if
-HOOK is nil then it only removes the update
-function, disabling automatic updating.
+(defun demap-minimap-smart-add-hook-update(minimap-or-name hook &optional depth local)
+  "Add MINIMAP-OR-NAME's update function to HOOK and return cleanup function.
+adds a function that updates MINIMAP-OR-NAME to a
+normal hook HOOK and removes that function
+automatically when MINIMAP-OR-NAME is killed. this
+also returns a function that when called, removes
+the update function from HOOK now instead of later.
 DEPTH and LOCAL are passed to `add-hook'."
-  (let (minimap update-func claen-func)
-    (setf minimap     (demap-normalize-minimap minimap-or-name)
-          update-func (demap-minimap-update-construct minimap)
-          claen-func  (demap--smart-add-hook hook update-func depth local))
-    (demap--minimap--cleanup-func-call minimap)
-    (setf (demap-minimap--cleanup-func minimap) claen-func) ))
-
+  (let ((minimap (demap-normalize-minimap minimap-or-name))
+        (update-func)
+        (clean-func) )
+    (setq update-func (apply-partially #'demap-minimap-update minimap)
+          clean-func  (demap--smart-add-hook hook update-func depth local) )
+    (demap--add-hook-local 'demap-minimap-kill-hook clean-func nil (demap-minimap-buffer minimap))
+    (lambda()
+      (demap--remove-hook-local 'demap-minimap-kill-hook clean-func (demap-minimap-buffer minimap))
+      (funcall clean-func) )))
 
 ;;minimap construct
 
@@ -350,7 +338,7 @@ DEPTH and LOCAL are passed to `add-hook'."
   "Construct a demap-minimap with name NAME."
   (let ((minimap (demap--minimap-construct)))
     (demap--minimap-buffer-set minimap (demap--minimap-buffer-construct name nil))
-    (demap-minimap-update-hook-set minimap 'window-state-change-hook)
+    (demap-minimap-smart-add-hook-update minimap 'window-state-change-hook)
     minimap ))
 
 
