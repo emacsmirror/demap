@@ -54,7 +54,7 @@
   :type 'string
   :group 'demap)
 
-(defvar demap-minimap-change-functions nil
+(defvar demap-minimap-change-once-functions nil
   "Hook ran when changing what buffer a demap-minimap is showing.
 demap has to replace its buffer whenever it changes
 what it shows. this hook is applied after
@@ -66,13 +66,13 @@ sense the buffer will be deleted after this hook is
 applied, all buffer-local functions will only be applied
 once.
 for a hook that is not reset every change,
-see `demap-minimap-persistant-change-functions'.")
+see `demap-minimap-change-functions'.")
 
-(defvar demap-minimap-persistant-change-functions nil
+(defvar demap-minimap-change-functions nil
   "Hook ran when changing what buffer a demap-minimap is showing.
 the functions should take one argument (MINIMAP).
 MINIMAP is the minimap that is changing.
-unlike `demap-minimap-change-functions', all
+unlike `demap-minimap-change-once-functions', all
 buffer-local functions get moved to the new buffer
 after they are all ran.")
 
@@ -80,7 +80,7 @@ after they are all ran.")
   "Normal hook ran when killing a minimap.
 this is called from within `kill-buffer-hook' in
 the minimap's buffer. unlike
-`demap-minimap-change-functions', all buffer-local
+`demap-minimap-change-once-functions', all buffer-local
 functions get moved to the new buffer when the
 minimap changes what it is showing.
 the minimap's buffer is current when the hook
@@ -232,15 +232,15 @@ the new buffer will be returned but not assigned to MINIMAP."
 
 (defun demap--minimap-change-functions-run(minimap)
   "Run minimap change function hook with argument MINIMAP.
-runs hooks `demap-minimap-change-functions' and
-`demap-minimap-persistant-change-functions'. also
-copy `demap-minimap-persistant-change-functions'
-local value to the minimap's buffer."
+runs hooks `demap-minimap-change-once-functions' and
+`demap-minimap-change-functions'. also
+copy `demap-minimap-change-functions'
+local value to MINIMAP's buffer."
   (with-demoted-errors "error in demap-minimap-change-functions: %s"
-    (run-hook-with-args 'demap-minimap-change-functions minimap) )
+    (run-hook-with-args 'demap-minimap-change-once-functions minimap) )
   (with-demoted-errors "error in demap-minimap-persistant-change-functions: %s"
-    (run-hook-with-args 'demap-minimap-persistant-change-functions minimap) )
-  (demap--copy-local-variable 'demap-minimap-persistant-change-functions (current-buffer) (demap-minimap-buffer minimap)) )
+    (run-hook-with-args 'demap-minimap-change-functions minimap) )
+  (demap--copy-local-variable 'demap-minimap-change-functions (current-buffer) (demap-minimap-buffer minimap)) )
 
 (defun demap--minimap-buffer-set(minimap new-buffer)
   "Set the buffer used by MINIMAP to NEW-BUFFER.
