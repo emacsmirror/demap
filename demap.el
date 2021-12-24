@@ -38,14 +38,14 @@
   :group 'demap)
 
 (defface demap-visible-region-face
-  '((((background dark)) (:background "#700000" :extend t))
-    (t (:background "#C847D8FEFFFF" :extend t)))
+  '((((background dark)) (:background "gray10" :extend t))
+    (t (:background "gray10" :extend t)))
   "Face used to represent the part of the minimap visible throw the main window."
   :group 'demap)
 
 (defface demap-current-line-face
-  '((((background dark)) (:background "dark gray"))
-    (t (:background "dark gray")))
+  '((((background dark)) (:background "gray16" :extend t))
+    (t (:background "gray16" :extend t)))
   "Face used to show the current line."
   :group 'demap)
 
