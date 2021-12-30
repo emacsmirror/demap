@@ -135,16 +135,47 @@ otherwise nil."
 Evaluate BODY with VAR bound to each car from LIST,
 in turn. Then evaluate RESULT to get return value,
 default nil. if LIST is not a list then evaluate
-BODY with VAR bound to the value of LIST
+BODY with VAR bound to the value of LIST.
 see `dolist'.
 \(fn (VAR LIST [RESULT]) BODY...)"
+  (declare (indent 1))
   (let ((tempvar (make-symbol "tempvar")))
-    `(let ((,tempvar (nth 1 spec)))
+    `(let ((,tempvar ,(nth 1 spec)))
        (if (demap--list-p ,tempvar)
            (dolist (,(nth 0 spec) ,tempvar ,(nth 2 spec))
              ,@body )
          (dolist (,(nth 0 spec) (list ,tempvar) ,(nth 2 spec))
            ,@body )))))
+
+(defmacro demap--dolists-unsafe(specs &rest body)
+  "Loop over all SPECS without type checking.
+unsafe version of `demap--dolists'.
+\(fn ((VAR LIST [STEP])...) BODY...)"
+  (declare (indent 1))
+  (if specs
+      `(demap--dolist ,(car specs)
+         (demap--dolists-unsafe ,(cdr specs)
+           ,@body ))
+    `(progn
+       ,@body )))
+
+(defmacro demap--dolists(specs &rest body)
+  "Loop over lists or objects in SPECS.
+Evaluate BODY with VAR bound to each car from LIST,
+in turn. if LIST is not a list then evaluate BODY
+with VAR bound to the value of LIST. this process
+is stacked for each VAR and LIST given, evaluateing
+BODY with every combanation a LIST elements. STEP
+is evaluated each time the end of LIST is reached.
+returns the value of STEP in the first spec.
+see `dolist'.
+\(fn ((VAR LIST [STEP])...) BODY...)"
+  (unless (listp specs)
+    (signal 'wrong-type-argument (list 'consp specs)))
+  (unless (<= 1 (length specs))
+    (signal 'wrong-number-of-arguments (list 1 (length specs))))
+  `(demap--dolists-unsafe ,specs
+     ,@body))
 
 
 (defun demap--remove-hook-local(hook func &optional buffer)
