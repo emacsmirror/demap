@@ -107,6 +107,12 @@ BUFFER-OR-NAME's new name is undefined."
       (rename-buffer "-old minimap buffer-" t)
       name )))
 
+(defun demap--real-buffer(buffer)
+  "Return base buffer of BUFFER.
+if Buffer is not an indirect buffer, return BUFFER.
+see `buffer-base-buffer'."
+  (or (buffer-base-buffer buffer) buffer))
+
 (defun demap--copy-local-variable(variable from-buffer to-buffer)
   "Copy the buffer-local value of VARIABLE in FROM-BUFFER to TO-BUFFER.
 if VARABLE is not buffer local in FROM-BUFFER, then
@@ -115,6 +121,30 @@ it will no longer be buffer local in TO-BUFFER."
       (setf (buffer-local-value variable to-buffer) (buffer-local-value variable from-buffer))
     (with-current-buffer to-buffer
       (kill-local-variable variable) )))
+
+(defun demap--list-p(obj)
+  "Determin if OBJ is a list.
+if OBJ is a list and not a lambda or nil, return t,
+otherwise nil."
+  (and obj
+       (listp obj)
+       (not (functionp obj)) ))
+
+(defmacro demap--dolist(spec &rest body)
+  "Loop over a list or object SPEC.
+Evaluate BODY with VAR bound to each car from LIST,
+in turn. Then evaluate RESULT to get return value,
+default nil. if LIST is not a list then evaluate
+BODY with VAR bound to the value of LIST
+see `dolist'.
+\(fn (VAR LIST [RESULT]) BODY...)"
+  (let ((tempvar (make-symbol "tempvar")))
+    `(let ((,tempvar (nth 1 spec)))
+       (if (demap--list-p ,tempvar)
+           (dolist (,(nth 0 spec) ,tempvar ,(nth 2 spec))
+             ,@body )
+         (dolist (,(nth 0 spec) (list ,tempvar) ,(nth 2 spec))
+           ,@body )))))
 
 
 (defun demap--remove-hook-local(hook func &optional buffer)
