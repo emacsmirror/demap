@@ -315,6 +315,20 @@ Value is nil if MINIMAP is not a demap-minimap or if it has been killed."
   (and (demap-minimap-p minimap)
        (buffer-live-p (demap-minimap-buffer minimap)) ))
 
+(defun demap-remove-hook-minimap-local(hook func &optional minimap)
+  "Remove the function FUNC from the buffer local value of HOOK as MINIMAP's buffer."
+  (demap--remove-hooks-local hook func (demap-minimap-buffer minimap)))
+
+(defun demap-smart-add-hook-minimap-local(hook func &optional depth minimap)
+  "Add the function FUNC to the buffer-local value of HOOK as MINIMAP's buffer.
+returns a function that when called, removes FUNC from HOOK.
+only usefall for `demap-minimap-change-functions'
+or `demap-minimap-kill-hook'.
+for DEPTH, see `add-hook'."
+  (with-current-buffer (demap-minimap-buffer minimap)
+    (add-hook hook func depth t)
+    (apply-partially #'demap-remove-hook-minimap-local hook func minimap)))
+
 (defun demap--minimap-generate-new-name (&optional name)
   "Return a name not used by any buffer based on NAME.
 defalt to `demap-defalt-buffer-name'."
@@ -440,48 +454,142 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   `(demap-minimap-showing-set ,minimap-or-name ,buffer-or-name))
 
 
-;;minimap update
+;;minimap construct
+
+(defun demap-minimap-construct(&optional name showing)
+  ""
+  (let ((minimap (demap--minimap-construct)))
+    (demap--minimap-buffer-set minimap (demap--minimap-buffer-construct name showing))
+    minimap))
 
 
+;;;view struct-------
 
-(defun demap-minimap-update-p(minimap)
-  "Determin if demap-minimap MINIMAP can fallow the current window."
-  (ignore minimap)
+(cl-defstruct (demap-view
+               (:constructor demap--view-construct))
+  (minimap nil :read-only t)
+  (overlay nil :read-only t)
+  (window  nil)
+  (cleanup-func) )
+
+
+;;view overlay
+
+(defun demap-view-overlay-update(view)
+  ""
+  (if (demap-view-window-active-p view)
+      (let ((ov      (demap-view-overlay view))
+            (window  (demap-view-window  view))
+            (minimap (demap-view-minimap view)) )
+        (move-overlay ov (window-start window) (window-end window t) (demap-minimap-buffer minimap)) )
+    (demap-view-cleanup-func-call view) ))
+
+(defun demap-view-overlay-update-scroll(view window &optional start)
+  ""
+  (ignore start)
+  (when (eq window (demap-view-window view))
+    (demap-view-overlay-update view) ))
+
+(defun demap-view-overlay-update-resize(view &optional frame)
+  ""
+  (ignore frame)
+  (demap-view-overlay-update view) )
+
+
+;;view cleanup-func
+
+(defun demap-view-cleanup-func-call(view)
+  ""
+  (funcall (demap-view-cleanup-func view)) )
+
+(defun demap-view-cleanup-func-reset(view)
+  ""
+  (demap-view-cleanup-func-call view)
+  (let ((funca (apply-partially #'demap-view-overlay-update-scroll view))
+        (funcb (apply-partially #'demap-view-overlay-update-resize view))
+        (clean ) )
+    (demap--add-hook 'window-scroll-functions      funca)
+    (demap--add-hook 'window-size-change-functions funcb)
+    (setq clean (lambda()
+                  (demap--remove-hook 'window-scroll-functions      funca)
+                  (demap--remove-hook 'window-size-change-functions funcb) ))
+    (setf (demap-view-cleanup-func view) clean) ))
+
+
+;;view window
+
+(defun demap-view-window-active-p(view)
+  ""
+  (let ((window  (demap-view-window  view))
+        (minimap (demap-view-minimap view)) )
+    (and (window-live-p window)
+         (eq (demap--real-buffer (window-buffer window)) (demap-minimap-showing minimap)) )))
+
+(defun demap-view-window-set(view window)
+  ""
+  (if (not window)
+      (overlay-put (demap-view-overlay view) 'face 'demap-current-line-face)
+    (overlay-put (demap-view-overlay view) 'face 'demap-visible-region-face)
+    (setf (demap-view-window view) window)
+    (setf (demap-minimap-showing (demap-view-minimap view)) (window-buffer window))
+    (demap-view-cleanup-func-reset view)
+    (demap-view-overlay-update view) ))
+
+
+;;view update
+
+(defun demap-view-test-window-p(view);TODO: redo doc for all in view update
+  "Determin if demap-minimap VIEW can fallow the current window."
+  (ignore view)
   (buffer-file-name (window-buffer)) )
 
-(defun demap-minimap-update(minimap)
-  "Update whet window demap-minimap MINIMAP is showing."
-  (when (demap-minimap-update-p minimap)
-    (setf (demap-minimap-showing minimap) (window-buffer)) ))
+(defun demap-view-window-update(view)
+  "Update whet window demap-minimap VIEW is showing."
+  (demap-view-window-set view (when (demap-view-test-window-p view)
+                                (selected-window) )))
 
-
-(defun demap-minimap-smart-add-hook-update(minimap-or-name hook &optional depth local)
-  "Add MINIMAP-OR-NAME's update function to HOOK and return cleanup function.
+(defun demap-view-smart-add-hook-window-update(view hook &optional depth local)
+  "Add VIEW's update function to HOOK and return cleanup function.
 adds a function that updates MINIMAP-OR-NAME to a
 normal hook HOOK and removes that function
 automatically when MINIMAP-OR-NAME is killed. this
 also returns a function that when called, removes
 the update function from HOOK now instead of later.
 DEPTH and LOCAL are passed to `add-hook'."
-  (let ((minimap (demap-normalize-minimap minimap-or-name))
-        (update-func)
-        (clean-func) )
-    (setq update-func (apply-partially #'demap-minimap-update minimap)
-          clean-func  (demap--smart-add-hook hook update-func depth local) )
-    (demap--add-hook-local 'demap-minimap-kill-hook clean-func nil (demap-minimap-buffer minimap))
+  (let ((minimap     (demap-view-minimap view))
+        (update-func (apply-partially #'demap-view-window-update view))
+        (clean-func  )
+        (cclean-func ) )
+    (setq clean-func  (demap--smart-add-hook hook update-func depth local)
+          cclean-func (demap-smart-add-hook-minimap-local 'demap-minimap-kill-hook clean-func nil minimap) )
     (lambda()
-      (demap--remove-hook-local 'demap-minimap-kill-hook clean-func (demap-minimap-buffer minimap))
+      (funcall cclean-func)
       (funcall clean-func) )))
 
-;;minimap construct
 
-(defun demap-minimap-construct(&optional name)
+;;view construct
+
+(defun demap-view-construct(minimap)
+  ""
+  (let ((view)
+        (clean-call) )
+    (setq view (demap--view-construct :minimap      minimap
+                                      :overlay      (make-overlay 0 0 (demap-minimap-buffer minimap))
+                                      :cleanup-func #'ignore ))
+    (setq clean-call (apply-partially #'demap-view-cleanup-func-call view) )
+    (demap-view-smart-add-hook-window-update view 'window-state-change-hook)
+    (demap--add-hook-local 'demap-minimap-kill-hook clean-call nil (demap-minimap-buffer minimap))
+    view ))
+
+
+
+;;minimap make
+
+(defun demap-view-make(&optional name)
   "Construct a demap-minimap with name NAME."
-  (let ((minimap (demap--minimap-construct)))
-    (demap--minimap-buffer-set minimap (demap--minimap-buffer-construct name nil))
-    (demap-minimap-smart-add-hook-update minimap 'window-state-change-hook)
-    minimap ))
-
+  (let ((overlay (demap-view-construct (demap-minimap-construct name))))
+    (demap-view-smart-add-hook-window-update overlay 'window-state-change-hook)
+    overlay ))
 
 
 (provide 'demap)
