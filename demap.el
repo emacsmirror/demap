@@ -178,34 +178,114 @@ see `dolist'.
      ,@body))
 
 
-(defun demap--remove-hook-local(hook func &optional buffer)
-  "Remove the function FUNC from the buffer-local value of HOOK as BUFFER.
+(defalias 'demap--add-hook    #'add-hook)
+(defalias 'demap--remove-hook #'remove-hook)
+
+(defun demap--add-hooks(hooks funcs &optional depth local)
+  "Add to the value of HOOKS the functions FUNCS.
+HOOKS may be a symbol or a list of symbols, and
+FUNCS may be any valid function or a list of valid
+functions. functions already in hook are not added.
+
+DEPTH and LOCAL are passed to `add-hook'."
+  (demap--dolists ((hook hooks)
+                   (func funcs) )
+    (demap--add-hook hook func depth local)))
+
+(defun demap--remove-hooks(hooks funcs &optional local)
+  "Remove FUNCS from the value of HOOKS.
+HOOKS may be a symbol or a list of symbols, and
+FUNCS may be any valid function or a list of valid
+functions. if function is not in hook, then it is
+skipped.
+
+if LOCAL is non-nil then HOOKS are buffer local.
 see `remove-hook'."
-  (with-current-buffer buffer
-    (remove-hook hook func t) ))
+  (demap--dolists ((hook hooks)
+                   (func funcs) )
+    (demap--remove-hook hook func local) ))
+
+(defun demap--smart-add-hook(hook func &optional depth local)
+  "Add to the value of HOOK the function FUNC and return a cleanup function.
+returns a function that, when called, removes FUNC
+from HOOK. the returned function excepts no arguments.
+
+DEPTH and LOCAL are passed to `add-hook'."
+  (demap--add-hook hook func depth local)
+  (if local
+      (apply-partially 'demap--remove-hook-local hook func (current-buffer))
+    (apply-partially 'demap--remove-hook hook func) ))
+
+(defun demap--smart-add-hooks(hooks funcs &optional depth local)
+  "Add to the values of HOOKS the functions FUNCS and return a cleanup function.
+HOOKS may be a symbol or a list of symbols, and
+FUNCS may be any valid function or a list of valid
+functions. functions already in hook are not added.
+
+returns a function that, when called, removes FUNCS
+from HOOKS. the returned function excepts no arguments.
+
+DEPTH and LOCAL are passed to `add-hook'."
+  (demap--add-hooks hooks funcs depth local)
+  (if local
+      (apply-partially 'demap--remove-hooks-local hooks funcs (current-buffer))
+    (apply-partially 'demap--remove-hooks hooks funcs) ))
+
 
 (defun demap--add-hook-local(hook func &optional depth buffer)
   "Add the function FUNC to the buffer-local value of HOOK as BUFFER.
 see `add-hook'."
   (with-current-buffer buffer
-    (add-hook hook func depth t) ))
+    (demap--add-hook hook func depth t) ))
 
-(defun demap--smart-add-hook(hook func &optional depth local)
-  "Add to the value of HOOK the function FUNC and return a cleanup function.
-returns a function that, when called, removes FUNC from HOOK.
-this function excepts no arguments.
-for DEPTH and LOCAL, see `add-hook'."
-  (add-hook hook func depth local)
-  (if local
-      (apply-partially 'demap--remove-hook-local hook func (current-buffer))
-    (apply-partially 'remove-hook hook func) ))
+(defun demap--remove-hook-local(hook func &optional buffer)
+  "Remove the functions FUNC from the buffer-local values of HOOK as BUFFER.
+see `remove-hook'."
+  (with-current-buffer buffer
+    (demap--remove-hook hook func t) ))
+
+(defun demap--add-hooks-local(hooks funcs &optional depth buffer)
+  "Add the functions FUNCS to the buffer-local values of HOOKS as BUFFER.
+HOOKS may be a symbol or a list of symbols, and
+FUNCS may be any valid function or a list of valid
+functions. functions already in hook are not added.
+
+DEPTH is passed to `add-hook'."
+  (with-current-buffer buffer
+    (demap--add-hooks hooks funcs depth t) ))
+
+(defun demap--remove-hooks-local(hooks funcs &optional buffer)
+  "Remove the functions FUNCS from the buffer-local values of HOOKS as BUFFER.
+HOOKS may be a symbol or a list of symbols, and
+FUNCS may be any valid function or a list of valid
+functions. if function is not in hook, then it is
+skipped.
+
+see `remove-hook'."
+  (with-current-buffer buffer
+    (demap--remove-hooks hooks funcs t) ))
 
 (defun demap--smart-add-hook-local(hook func &optional depth buffer)
-  "Add the function FUNC to the buffer-local value of HOOK as BUFFER.
-returns a function that removes FUNC from HOOK when called.
-for DEPTH, see `add-hook'."
+  "Add FUNC to the buffer-local value of HOOK and return a cleanup function.
+returns a function that, when called, removes FUNC
+from HOOK. the returned function excepts no arguments.
+
+DEPTH and LOCAL are passed to `add-hook'."
   (with-current-buffer buffer
     (demap--smart-add-hook hook func depth t) ))
+
+(defun demap--smart-add-hooks-local(hooks funcs &optional depth buffer)
+  "Add FUNCS to the buffer-local values of HOOKS and return a cleanup function.
+HOOKS may be a symbol or a list of symbols, and
+FUNCS may be any valid function or a list of valid
+functions. functions already in hook are not added.
+
+returns a function that, when called, removes FUNCS
+from HOOKS. the returned function excepts no arguments.
+
+DEPTH is passed to `add-hook'."
+  (with-current-buffer buffer
+    (demap--smart-add-hooks hooks funcs depth t) ))
 
 
 ;;;minimap struct
