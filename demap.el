@@ -32,6 +32,7 @@
   "A detachable minimap for Emacs."
   :group 'convenience)
 
+
 (defface demap-font-face
   '((default :family "DejaVu Sans Mono" :height 30))
   "Face used for the body of the minimap."
@@ -40,14 +41,27 @@
 (defface demap-visible-region-face
   '((((background dark)) (:background "gray10" :extend t))
     (t (:background "gray10" :extend t)))
-  "Face used to represent the part of the minimap visible throw the main window."
+  "Face used to for the part of the minimap visible throw the main window."
   :group 'demap)
 
 (defface demap-current-line-face
-  '((((background dark)) (:background "gray16" :extend t))
-    (t (:background "gray16" :extend t)))
+  '((((background dark)) (:background "gray50" :extend t))
+    (t (:background "gray50" :extend t)))
   "Face used to show the current line."
   :group 'demap)
+
+(defface demap-visible-region-inactive-face
+  '((((background dark)) (:background "gray16" :extend t))
+    (t (:background "gray16" :extend t)))
+  "Face used to represent the part of the minimap visible throw the main window."
+  :group 'demap)
+
+(defface demap-current-line-inactive-face
+  '((((background dark)) (:background "gray77" :extend t))
+    (t (:background "gray77" :extend t)))
+  "Face used to show the current line."
+  :group 'demap)
+
 
 (defcustom demap-defalt-buffer-name "*Minimap*"
   "The defalt name to use when making a new minimap."
@@ -469,8 +483,29 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
                (:constructor demap--view-construct))
   (minimap nil :read-only t)
   (overlay nil :read-only t)
+  (line-ov nil :read-only t)
   (window  nil)
   (cleanup-func) )
+
+
+;;view line-ov
+
+(defun demap-view-line-ov-update(view)
+  ""
+  (if (eq (selected-window) (demap-view-window view))
+      (let ((ov      (demap-view-line-ov view))
+            (minimap (demap-view-minimap view)) )
+        (move-overlay ov (line-beginning-position) (+ (line-end-position) 1) (demap-minimap-buffer minimap)) )
+    (message "oh no")
+    (overlay-put (demap-view-line-ov view) 'face 'demap-current-line-inactive-face)
+    (remove-hook 'post-command-hook (apply-partially #'demap-view-line-ov-update view)) ))
+
+(defun demap-view-line-ov-update-reset(view)
+  ""
+  (message "oh man")
+  (overlay-put (demap-view-line-ov view) 'face 'demap-current-line-face)
+  (add-hook 'post-command-hook (apply-partially #'demap-view-line-ov-update view))
+  (demap-view-line-ov-update view) )
 
 
 ;;view overlay
@@ -528,12 +563,14 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 (defun demap-view-window-set(view window)
   ""
   (if (not window)
-      (overlay-put (demap-view-overlay view) 'face 'demap-current-line-face)
+      (overlay-put (demap-view-overlay view) 'face 'demap-visible-region-inactive-face)
     (overlay-put (demap-view-overlay view) 'face 'demap-visible-region-face)
     (setf (demap-view-window view) window)
     (setf (demap-minimap-showing (demap-view-minimap view)) (window-buffer window))
     (demap-view-cleanup-func-reset view)
-    (demap-view-overlay-update view) ))
+    (demap-view-line-ov-update-reset view)
+    (demap-view-overlay-update view)
+    nil ))
 
 
 ;;view update
@@ -575,6 +612,7 @@ DEPTH and LOCAL are passed to `add-hook'."
         (clean-call) )
     (setq view (demap--view-construct :minimap      minimap
                                       :overlay      (make-overlay 0 0 (demap-minimap-buffer minimap))
+                                      :line-ov      (make-overlay 0 0 (demap-minimap-buffer minimap))
                                       :cleanup-func #'ignore ))
     (setq clean-call (apply-partially #'demap-view-cleanup-func-call view) )
     (demap-view-smart-add-hook-window-update view 'window-state-change-hook)
