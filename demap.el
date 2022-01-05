@@ -26,6 +26,7 @@
     (require 'window) ))
 
 (require 'demap-minimap)
+(require 'demap--tools)
 
 
 (defface demap-visible-region-face
@@ -113,7 +114,7 @@
   (let ((window  (demap-area-ov-window  area-ov))
         (minimap (demap-area-ov-minimap area-ov)) )
     (and (window-live-p window)
-         (eq (demap--real-buffer (window-buffer window)) (demap-minimap-showing minimap)) )))
+         (eq (demap--tools-real-buffer (window-buffer window)) (demap-minimap-showing minimap)) )))
 
 ;;area-ov update
 
@@ -207,8 +208,8 @@
         (buffer  (demap-minimap-buffer (demap-track-w-minimap track-w)))
         (line-ov (demap-track-w-line-ov track-w))
         (area-ov (demap-track-w-area-ov track-w)) )
-    (demap--remove-hook       'window-state-change-hook update-func)
-    (demap--remove-hook-local 'demap-minimap-kill-hook  unhook-func buffer)
+    (demap--tools-remove-hook       'window-state-change-hook update-func)
+    (demap--tools-remove-hook-local 'demap-minimap-kill-hook  unhook-func buffer)
     (when line-ov
       (demap-line-ov-unset line-ov) )
     (when area-ov
@@ -220,7 +221,7 @@
         (unhook-func (apply-partially #'demap-track-w-unhook track-w))
         (buffer      (demap-minimap-buffer (demap-track-w-minimap track-w))) )
     (add-hook 'window-state-change-hook update-func)
-    (demap--add-hook-local 'demap-minimap-kill-hook unhook-func nil buffer) ))
+    (demap--tools-add-hook-local 'demap-minimap-kill-hook unhook-func nil buffer) ))
 
 ;;track-w construct
 

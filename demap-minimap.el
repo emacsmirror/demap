@@ -25,15 +25,17 @@
     ;window.el doesn't provide 'window before version 28
     (require 'window) ))
 
+(require 'demap--tools)
+
 ;;varables
 
-(defface demap-font-face
+(defface demap-minimap-font-face
   '((default :family "DejaVu Sans Mono" :height 30))
   "Face used for the body of the minimap."
   :group 'demap)
 
 
-(defcustom demap-defalt-buffer-name "*Minimap*"
+(defcustom demap-minimap-defalt-name "*Minimap*"
   "The defalt name to use when making a new minimap."
   :type 'string
   :group 'demap)
@@ -78,200 +80,6 @@ the minimap being killed.")
 
 ;;tools
 
-(defun demap--window-replace-buffer(buffer-or-name new-buffer-or-name)
-  "Replace the buffer in all windows holding BUFFER-OR-NAME with NEW-BUFFER-OR-NAME."
-  (dolist (window (get-buffer-window-list buffer-or-name t t))
-    (set-window-buffer window new-buffer-or-name t) ))
-
-(defun demap--buffer-steal-name(buffer-or-name)
-  "Rename BUFFER-OR-NAME and return its old name.
-BUFFER-OR-NAME's new name is undefined."
-  (with-current-buffer buffer-or-name
-    (let ((name (buffer-name)))
-      (rename-buffer "-old minimap buffer-" t)
-      name )))
-
-(defun demap--real-buffer(buffer)
-  "Return base buffer of BUFFER.
-if Buffer is not an indirect buffer, return BUFFER.
-see `buffer-base-buffer'."
-  (or (buffer-base-buffer buffer) buffer))
-
-(defun demap--copy-local-variable(variable from-buffer to-buffer)
-  "Copy the buffer-local value of VARIABLE in FROM-BUFFER to TO-BUFFER.
-if VARABLE is not buffer local in FROM-BUFFER, then
-it will no longer be buffer local in TO-BUFFER."
-  (if (local-variable-p variable from-buffer)
-      (setf (buffer-local-value variable to-buffer) (buffer-local-value variable from-buffer))
-    (with-current-buffer to-buffer
-      (kill-local-variable variable) )))
-
-(defun demap--list-p(obj)
-  "Determin if OBJ is a list.
-if OBJ is a list and not a lambda or nil, return t,
-otherwise nil."
-  (and obj
-       (listp obj)
-       (not (functionp obj)) ))
-
-(defmacro demap--dolist(spec &rest body)
-  "Loop over a list or object SPEC.
-Evaluate BODY with VAR bound to each car from LIST,
-in turn. Then evaluate RESULT to get return value,
-default nil. if LIST is not a list then evaluate
-BODY with VAR bound to the value of LIST.
-see `dolist'.
-\(fn (VAR LIST [RESULT]) BODY...)"
-  (declare (indent 1))
-  (let ((tempvar (make-symbol "tempvar")))
-    `(let ((,tempvar ,(nth 1 spec)))
-       (if (demap--list-p ,tempvar)
-           (dolist (,(nth 0 spec) ,tempvar ,(nth 2 spec))
-             ,@body )
-         (dolist (,(nth 0 spec) (list ,tempvar) ,(nth 2 spec))
-           ,@body )))))
-
-(defmacro demap--dolists-unsafe(specs &rest body)
-  "Loop over all SPECS without type checking.
-unsafe version of `demap--dolists'.
-\(fn ((VAR LIST [STEP])...) BODY...)"
-  (declare (indent 1))
-  (if specs
-      `(demap--dolist ,(car specs)
-         (demap--dolists-unsafe ,(cdr specs)
-           ,@body ))
-    `(progn
-       ,@body )))
-
-(defmacro demap--dolists(specs &rest body)
-  "Loop over lists or objects in SPECS.
-Evaluate BODY with VAR bound to each car from LIST,
-in turn. if LIST is not a list then evaluate BODY
-with VAR bound to the value of LIST. this process
-is stacked for each VAR and LIST given, evaluateing
-BODY with every combanation a LIST elements. STEP
-is evaluated each time the end of LIST is reached.
-returns the value of STEP in the first spec.
-see `dolist'.
-\(fn ((VAR LIST [STEP])...) BODY...)"
-  (unless (listp specs)
-    (signal 'wrong-type-argument (list 'consp specs)))
-  (unless (<= 1 (length specs))
-    (signal 'wrong-number-of-arguments (list 1 (length specs))))
-  `(demap--dolists-unsafe ,specs
-     ,@body))
-
-
-(defalias 'demap--add-hook    #'add-hook)
-(defalias 'demap--remove-hook #'remove-hook)
-
-(defun demap--add-hooks(hooks funcs &optional depth local)
-  "Add to the value of HOOKS the functions FUNCS.
-HOOKS may be a symbol or a list of symbols, and
-FUNCS may be any valid function or a list of valid
-functions. functions already in hook are not added.
-
-DEPTH and LOCAL are passed to `add-hook'."
-  (demap--dolists ((hook hooks)
-                   (func funcs) )
-    (demap--add-hook hook func depth local)))
-
-(defun demap--remove-hooks(hooks funcs &optional local)
-  "Remove FUNCS from the value of HOOKS.
-HOOKS may be a symbol or a list of symbols, and
-FUNCS may be any valid function or a list of valid
-functions. if function is not in hook, then it is
-skipped.
-
-if LOCAL is non-nil then HOOKS are buffer local.
-see `remove-hook'."
-  (demap--dolists ((hook hooks)
-                   (func funcs) )
-    (demap--remove-hook hook func local) ))
-
-(defun demap--smart-add-hook(hook func &optional depth local)
-  "Add to the value of HOOK the function FUNC and return a cleanup function.
-returns a function that, when called, removes FUNC
-from HOOK. the returned function excepts no arguments.
-
-DEPTH and LOCAL are passed to `add-hook'."
-  (demap--add-hook hook func depth local)
-  (if local
-      (apply-partially 'demap--remove-hook-local hook func (current-buffer))
-    (apply-partially 'demap--remove-hook hook func) ))
-
-(defun demap--smart-add-hooks(hooks funcs &optional depth local)
-  "Add to the values of HOOKS the functions FUNCS and return a cleanup function.
-HOOKS may be a symbol or a list of symbols, and
-FUNCS may be any valid function or a list of valid
-functions. functions already in hook are not added.
-
-returns a function that, when called, removes FUNCS
-from HOOKS. the returned function excepts no arguments.
-
-DEPTH and LOCAL are passed to `add-hook'."
-  (demap--add-hooks hooks funcs depth local)
-  (if local
-      (apply-partially 'demap--remove-hooks-local hooks funcs (current-buffer))
-    (apply-partially 'demap--remove-hooks hooks funcs) ))
-
-
-(defun demap--add-hook-local(hook func &optional depth buffer)
-  "Add the function FUNC to the buffer-local value of HOOK as BUFFER.
-see `add-hook'."
-  (with-current-buffer buffer
-    (demap--add-hook hook func depth t) ))
-
-(defun demap--remove-hook-local(hook func &optional buffer)
-  "Remove the functions FUNC from the buffer-local values of HOOK as BUFFER.
-see `remove-hook'."
-  (with-current-buffer buffer
-    (demap--remove-hook hook func t) ))
-
-(defun demap--add-hooks-local(hooks funcs &optional depth buffer)
-  "Add the functions FUNCS to the buffer-local values of HOOKS as BUFFER.
-HOOKS may be a symbol or a list of symbols, and
-FUNCS may be any valid function or a list of valid
-functions. functions already in hook are not added.
-
-DEPTH is passed to `add-hook'."
-  (with-current-buffer buffer
-    (demap--add-hooks hooks funcs depth t) ))
-
-(defun demap--remove-hooks-local(hooks funcs &optional buffer)
-  "Remove the functions FUNCS from the buffer-local values of HOOKS as BUFFER.
-HOOKS may be a symbol or a list of symbols, and
-FUNCS may be any valid function or a list of valid
-functions. if function is not in hook, then it is
-skipped.
-
-see `remove-hook'."
-  (with-current-buffer buffer
-    (demap--remove-hooks hooks funcs t) ))
-
-(defun demap--smart-add-hook-local(hook func &optional depth buffer)
-  "Add FUNC to the buffer-local value of HOOK and return a cleanup function.
-returns a function that, when called, removes FUNC
-from HOOK. the returned function excepts no arguments.
-
-DEPTH and LOCAL are passed to `add-hook'."
-  (with-current-buffer buffer
-    (demap--smart-add-hook hook func depth t) ))
-
-(defun demap--smart-add-hooks-local(hooks funcs &optional depth buffer)
-  "Add FUNCS to the buffer-local values of HOOKS and return a cleanup function.
-HOOKS may be a symbol or a list of symbols, and
-FUNCS may be any valid function or a list of valid
-functions. functions already in hook are not added.
-
-returns a function that, when called, removes FUNCS
-from HOOKS. the returned function excepts no arguments.
-
-DEPTH is passed to `add-hook'."
-  (with-current-buffer buffer
-    (demap--smart-add-hooks hooks funcs depth t) ))
-
-
 ;;;minimap struct
 
 (cl-defstruct (demap-minimap
@@ -301,7 +109,7 @@ Value is nil if MINIMAP is not a demap-minimap or if it has been killed."
 
 (defun demap-remove-hook-minimap-local(hook func &optional minimap)
   "Remove the function FUNC from the buffer local value of HOOK as MINIMAP's buffer."
-  (demap--remove-hooks-local hook func (demap-minimap-buffer minimap)))
+  (demap--tools-remove-hooks-local hook func (demap-minimap-buffer minimap)))
 
 (defun demap-smart-add-hook-minimap-local(hook func &optional depth minimap)
   "Add the function FUNC to the buffer-local value of HOOK as MINIMAP's buffer.
@@ -315,8 +123,8 @@ for DEPTH, see `add-hook'."
 
 (defun demap--minimap-generate-new-name (&optional name)
   "Return a name not used by any buffer based on NAME.
-defalt to `demap-defalt-buffer-name'."
-  (generate-new-buffer-name (or name demap-defalt-buffer-name)) )
+defalt to `demap-minimap-defalt-name'."
+  (generate-new-buffer-name (or name demap-minimap-defalt-name)) )
 
 
 ;;minimap buffer
@@ -332,15 +140,15 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
 without this, killing the buffer that MINIMAP is showing will kill MINIMAP.
 this will make MINIMAP change to a blank buffer instead."
   (when (demap-minimap-showing minimap)
-    (demap--add-hook-local 'kill-buffer-hook
-                           (demap--smart-add-hook-local 'kill-buffer-hook
-                                                        (apply-partially #'demap-minimap-showing-set minimap nil)
-                                                        nil (demap-minimap-showing minimap) )
-                           nil (demap-minimap-buffer minimap) )))
+    (demap--tools-add-hook-local 'kill-buffer-hook
+                                 (demap--tools-smart-add-hook-local 'kill-buffer-hook
+                                                              (apply-partially #'demap-minimap-showing-set minimap nil)
+                                                              nil (demap-minimap-showing minimap) )
+                                 nil (demap-minimap-buffer minimap) )))
 
 (defun demap--minimap-buffer-construct(&optional name show)
   "Construct a buffer that demap-minimap can use, using NAME and showing SHOW.
-name defalts to `demap-defalt-buffer-name' and show
+name defalts to `demap-minimap-defalt-name' and show
 defalts to a blank buffer."
   (let (buffer)
     (setq name (demap--minimap-generate-new-name name))
@@ -352,7 +160,7 @@ defalts to a blank buffer."
       (setq vertical-scroll-bar nil
             truncate-lines      t
             buffer-read-only    t )
-      (buffer-face-set 'demap-font-face)
+      (buffer-face-set 'demap-minimap-font-face)
       buffer)))
 
 (defun demap--minimap-buffer-reconstruct(minimap &optional new-show)
@@ -361,8 +169,8 @@ this will take the buffers name and any window that buffer was in.
 the new buffer will be returned but not assigned to MINIMAP."
   (let (new-buffer old-buffer)
     (setq old-buffer (demap-minimap-buffer minimap))
-    (setq new-buffer (demap--minimap-buffer-construct (demap--buffer-steal-name old-buffer) new-show) )
-    (demap--window-replace-buffer old-buffer new-buffer)
+    (setq new-buffer (demap--minimap-buffer-construct (demap--tools-buffer-steal-name old-buffer) new-show) )
+    (demap--tools-window-replace-buffer old-buffer new-buffer)
     new-buffer))
 
 (defun demap--minimap-kill-hook-run()
@@ -379,7 +187,7 @@ local value to MINIMAP's buffer."
     (run-hook-with-args 'demap-minimap-change-once-functions minimap) )
   (with-demoted-errors "error in demap-minimap-persistant-change-functions: %s"
     (run-hook-with-args 'demap-minimap-change-functions minimap) )
-  (demap--copy-local-variable 'demap-minimap-change-functions (current-buffer) (demap-minimap-buffer minimap)) )
+  (demap--tools-copy-local-variable 'demap-minimap-change-functions (current-buffer) (demap-minimap-buffer minimap)) )
 
 (defun demap--minimap-buffer-set(minimap new-buffer)
   "Set the buffer used by MINIMAP to NEW-BUFFER.
@@ -393,7 +201,7 @@ the old buffer will be killed."
       (with-current-buffer old-buffer
         (kill-local-variable 'demap--current-minimap)
         (remove-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run t)
-        (demap--copy-local-variable 'demap-minimap-kill-hook old-buffer new-buffer)
+        (demap--tools-copy-local-variable 'demap-minimap-kill-hook old-buffer new-buffer)
         (demap--minimap-change-functions-run minimap))
       (kill-buffer old-buffer) )
     (demap--minimap-protect-from-base minimap) ))
@@ -449,6 +257,5 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 
 (provide 'demap-minimap)
-;(provide 'demap)
 
 ;;; demap-minimap.el ends here
