@@ -4,7 +4,7 @@ project(demap VERSION 0.1.1)
 include(CTest)
 enable_testing()
 
-set(FILES demap.el demap-minimap.el demap--tools.el)
+set(FILES demap.el demap-minimap.el demap--tools.el demap-track-w.el)
 
 
 set(PKG-FILE ${PROJECT_NAME}-pkg.el)
