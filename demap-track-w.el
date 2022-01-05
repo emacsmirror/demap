@@ -115,6 +115,18 @@
     (and (window-live-p window)
          (eq (demap--tools-real-buffer (window-buffer window)) (demap-minimap-showing minimap)) )))
 
+;;area-ov center
+
+(defun demap-area-ov-center(area-ov)
+  ""
+  (let ((overlay  (demap-area-ov-overlay area-ov))
+        (buffer   (demap-minimap-buffer (demap-area-ov-minimap area-ov))) )
+    (dolist (window (get-buffer-window-list buffer t t))
+      (when (>= (overlay-end overlay) (window-end window))
+        (set-window-point window (overlay-end overlay)) )
+      (when (<= (overlay-start overlay) (window-start window))
+        (set-window-point window (- (overlay-start overlay) 1)) ))))
+
 ;;area-ov update
 
 (defun demap-area-ov-update(area-ov &optional &rest r)
@@ -122,10 +134,12 @@
   (ignore r)
   (let ((window (demap-area-ov-window area-ov)))
     (if (demap-area-ov-active-p area-ov)
-        (move-overlay (demap-area-ov-overlay area-ov)
-                      (window-start window)
-                      (window-end window t)
-                      (demap-minimap-buffer (demap-area-ov-minimap area-ov)) )
+        (progn
+          (move-overlay (demap-area-ov-overlay area-ov)
+                        (window-start window)
+                        (window-end window t)
+                        (demap-minimap-buffer (demap-area-ov-minimap area-ov)) )
+          (demap-area-ov-center area-ov) )
       (demap-area-ov-unset area-ov) )))
 
 (defun demap-area-ov-update-if-window(area-ov window &optional &rest r)
