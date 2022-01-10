@@ -20,46 +20,6 @@
 ;; current line.
 ;;
 ;;
-;; this file includes
-;;   faces:
-;;     `demap-current-line-face'
-;;     `demap-current-line-inactive-face'
-;;     `demap-visible-region-face'
-;;     `demap-visible-region-inactive-face'
-;;   variables:
-;;     `demap-track-w-update-p-func'
-;;   interactive:
-;;     `demap-track-w-construct'
-;;
-;;   demap-line-ov:
-;;     `demap-line-ov-construct'
-;;     `demap-line-ov-minimap'
-;;     `demap-line-ov-overlay'
-;;     `demap-line-ov-window'
-;;     `demap-line-ov-update'
-;;     `demap-line-ov-deactivate'
-;;     `demap-line-ov-activate'
-;;     `demap-line-ov-set'
-;;   demap-area-ov:
-;;     `demap-area-ov-construct'
-;;     `demap-area-ov-minimap'
-;;     `demap-area-ov-overlay'
-;;     `demap-area-ov-window'
-;;     `demap-area-ov-update'
-;;     `demap-area-ov-deactivate'
-;;     `demap-area-ov-activate'
-;;     `demap-area-ov-set'
-;;   demap-track-w:
-;;     `demap-track-w-construct'
-;;     `demap-track-w-minimap'
-;;     `demap-track-w-line-ov'
-;;     `demap-track-w-area-ov'
-;;     `demap-track-w-construct-unhooked'
-;;     `demap-track-w-update-p-func-defalt'
-;;     `demap-track-w-window-set'
-;;     `demap-track-w-update'
-;;     `demap-track-w-unhook'
-;;     `demap-track-w-hook'
 ;;
 ;;
 ;;; Code:
@@ -94,7 +54,18 @@
   "Face used to highlight the current line in demap-minimap when not active."
   :group 'demap)
 
-(defcustom demap-track-w-update-p-func #'demap-track-w-update-p-func-defalt
+
+(defvar-local demap-minimap-window nil
+  "")
+
+
+(defvar-local demap-test-mode nil
+  "")
+
+(defvar demap-test-mode-window-set-functions nil
+  "Take one argument (window).")
+
+(defcustom demap-test-mode-update-p-func #'demap-test-mode-update-p-func-defalt
   "Function to determin if demap-minimap should show the selected window.
 the function should accept one argument (TRACK-W)
 and return nil if TRACK-W should not show the
@@ -103,235 +74,243 @@ TRACK-W's minimap's buffer has the current buffer."
   :type 'function
   :group 'demap)
 
-;;;line-ov-------
 
-(cl-defstruct (demap-line-ov
-               (:copier nil)
-               (:constructor nil)
-               (:constructor demap-line-ov-construct
-                (minimap
-                 &aux
-                 (overlay (make-overlay 0 0 (demap-minimap-buffer minimap))) )))
-  (minimap nil :read-only t)
-  (overlay nil :read-only t)
-  (window  nil) )
+(defvar-local demap-test-line-mode nil
+  "")
+
+(defvar-local demap-test-area-mode nil
+  "")
 
 
-;;line-ov update
+;;;test-mode-------
 
-(defun demap-line-ov-update(line-ov)
-  "Move LINE-OV's overlay to its window's current line in its minimap.
-if LINE-OV's window is no longer selected then
-`demap-line-ov-deactivate' is called."
-  (if (eq (selected-window) (demap-line-ov-window line-ov))
-      (move-overlay (demap-line-ov-overlay line-ov)
-                    (line-beginning-position)
-                    (+ (line-end-position) 1)
-                    (demap-minimap-buffer (demap-line-ov-minimap line-ov)) )
-    (demap-line-ov-deactivate line-ov) ))
+;;test-mode window
 
-;;line-ov active
-
-(defun demap-line-ov-deactivate(line-ov)
-  "Deactivate LINE-OV.
-hooks are removed and LINE-OV changes face."
-  (overlay-put (demap-line-ov-overlay line-ov) 'face 'demap-current-line-inactive-face)
-  (remove-hook 'post-command-hook (apply-partially #'demap-line-ov-update line-ov)) )
-
-(defun demap-line-ov-activate(line-ov)
-  "Activate LINE-OV.
-hooks are added for updating LINE-OV and overlay
-face is set."
-  (overlay-put (demap-line-ov-overlay line-ov) 'face 'demap-current-line-face)
-  (add-hook 'post-command-hook (apply-partially #'demap-line-ov-update line-ov))
-  (demap-line-ov-update line-ov) )
-
-(defun demap-line-ov-set(line-ov window)
-  "Activate LINE-OV's and set window to WINDOW.
-LINE-OV will use WINDOW for updates. if WINDOW is
-nil, this function dose nuthing."
-  (when window
-    (setf (demap-line-ov-window line-ov) window)
-    (demap-line-ov-activate line-ov)))
-
-
-;;;area-ov-------
-
-(cl-defstruct (demap-area-ov
-               (:copier nil)
-               (:constructor nil)
-               (:constructor demap-area-ov-construct
-                (minimap
-                 &aux
-                 (overlay (make-overlay 0 0 (demap-minimap-buffer minimap))) )))
-  (minimap nil :read-only t)
-  (overlay nil :read-only t)
-  (window  nil) )
-
-
-(defun demap--area-ov-active-p(area-ov)
-  "Determin if AREA-OV should be active or not."
-  (let ((window  (demap-area-ov-window  area-ov))
-        (minimap (demap-area-ov-minimap area-ov)) )
-    (and (window-live-p window)
-         (eq (demap--tools-real-buffer (window-buffer window)) (demap-minimap-showing minimap)) )))
-
-;;area-ov center
-
-(defun demap--area-ov-make-visible(area-ov)
-  "Scroll AREA-OV's minimap so that its overlay is visible."
-  (let ((overlay  (demap-area-ov-overlay area-ov))
-        (buffer   (demap-minimap-buffer (demap-area-ov-minimap area-ov))) )
-    (dolist (window (get-buffer-window-list buffer t t))
-      (when (>= (overlay-end overlay) (window-end window))
-        (set-window-point window (overlay-end overlay)) )
-      (when (<= (overlay-start overlay) (window-start window))
-        (set-window-point window (- (overlay-start overlay) 1)) ))))
-
-;;area-ov update
-
-(defun demap-area-ov-update(area-ov &optional &rest r)
-  "Move AREA-OV's overlay to its window's visible region in its minimap.
-if AREA-OV's window is not showing what AREA-OV's
-minimap is showing, then `demap-area-ov-deactivate'
-is called.
-R is ignored so that this function can be passed to
-function hooks."
-  (ignore r)
-  (let ((window (demap-area-ov-window area-ov)))
-    (if (demap--area-ov-active-p area-ov)
-        (progn
-          (move-overlay (demap-area-ov-overlay area-ov)
-                        (window-start window)
-                        (window-end window t)
-                        (demap-minimap-buffer (demap-area-ov-minimap area-ov)) )
-          (demap--area-ov-make-visible area-ov) )
-      (demap-area-ov-deactivate area-ov) )))
-
-(defun demap--area-ov-update-if-window(area-ov window &optional &rest r)
-  "Update AREA-OV's window is WINDOW.
-R is ignored so that this function can be passed to
-function hooks."
-  (ignore r)
-  (when (eq (demap-area-ov-window area-ov) window)
-    (demap-area-ov-update area-ov) ))
-
-;;area-ov set
-
-(defun demap-area-ov-deactivate(area-ov)
-  "Deactivate AREA-OV.
-AREA-OV's update hooks are removed."
-  (let ((upd-if-finc (apply-partially #'demap--area-ov-update-if-window area-ov))
-        (update-func (apply-partially #'demap-area-ov-update area-ov)) )
-    (remove-hook 'window-scroll-functions      upd-if-finc)
-    (remove-hook 'window-size-change-functions update-func) ))
-
-(defun demap-area-ov-activate(area-ov)
-  "Activate AREA-OV.
-update hooks are set and overlays face is set."
-  (overlay-put (demap-area-ov-overlay area-ov) 'face 'demap-visible-region-face)
-  (let ((upd-if-finc (apply-partially #'demap--area-ov-update-if-window area-ov))
-        (update-func (apply-partially #'demap-area-ov-update area-ov)) )
-    (add-hook 'window-scroll-functions      upd-if-finc)
-    (add-hook 'window-size-change-functions update-func) )
-  (demap-area-ov-update area-ov) )
-
-(defun demap-area-ov-set(area-ov window)
-  "Set AREA-OV's window to WINDOW and activate.
-if WINDOW is nil then set AREA-OV's overlay to the
-inactive face but keep update hooks."
-  (if (not window)
-      (overlay-put (demap-area-ov-overlay area-ov) 'face 'demap-visible-region-inactive-face )
-    (setf (demap-area-ov-window area-ov) window)
-    (demap-area-ov-activate area-ov) ))
-
-
-;;;track-w-------
-
-(cl-defstruct (demap-track-w
-               (:copier nil)
-               (:constructor nil)
-               (:constructor demap-track-w-construct-unhooked
-                (&key
-                 (minimap (demap-minimap-construct))
-                 (line-ov (demap-line-ov-construct minimap))
-                 (area-ov (demap-area-ov-construct minimap)) )))
-  (minimap nil :read-only t)
-  (line-ov nil)
-  (area-ov nil) )
-
-
-;;track-w window
-
-(defun demap-track-w-window-set(track-w window)
+(defun demap--test-mode-window-set(window)
   "Set TRACK-W to show WINDOW.
 updates TRACK-W's minimap and overlays accordingly.
 if WINDOW is nil then TRACK-W is made inactive."
-  (let ((minimap (demap-track-w-minimap track-w))
-        (line-ov (demap-track-w-line-ov track-w))
-        (area-ov (demap-track-w-area-ov track-w)) )
-    (when window
-      (setf (demap-minimap-showing minimap) (window-buffer window)) )
-    (when line-ov
-      (demap-line-ov-set line-ov window) )
-    (when area-ov
-      (demap-area-ov-set area-ov window) )))
+  (when window
+    (setf demap-minimap-window window
+          (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window)) )
+  (with-demoted-errors "error in demap-window-set-functions: %s"
+    (run-hook-with-args 'demap-test-mode-window-set-functions window) ))
 
-;;track-w update
+;;test-mode update
 
-(defun demap-track-w-update-p-func-defalt(track-w)
+(defun demap-test-mode-update-p-func-defalt()
   "Determin if TRACK-W can fallow the current window."
-  (ignore track-w)
   (buffer-file-name (window-buffer)) )
 
-(defun demap--track-w-update-p-func-call(track-w)
-  "Determin if TRACK-W can fallow the current window."
-  (with-current-buffer (demap-minimap-buffer (demap-track-w-minimap track-w))
-    (funcall demap-track-w-update-p-func track-w)) )
-
-(defun demap-track-w-update(track-w)
+(defun demap-test-mode-update()
   "Update TRACK-W to test and show current window.
 if the current window fails `demap-track-w-window-set'
  then track-w is deactivated."
-  (demap-track-w-window-set track-w (when (demap--track-w-update-p-func-call track-w)
-                                      (selected-window) )))
+  (demap--test-mode-window-set (when (funcall demap-test-mode-update-p-func)
+                                 (selected-window) )))
 
-;;track-w hook
+(defun demap-test-mode-update-as(minimap)
+  ""
+  (with-current-buffer (demap-minimap-buffer minimap)
+    (demap-test-mode-update) ))
 
-(defun demap-track-w-unhook(track-w)
-  "Remove all update hooks setup by TRACK-W and its overlays."
-  (let ((update-func (apply-partially #'demap-track-w-update track-w))
-        (unhook-func (apply-partially #'demap-track-w-unhook track-w))
-        (buffer  (demap-minimap-buffer (demap-track-w-minimap track-w)))
-        (line-ov (demap-track-w-line-ov track-w))
-        (area-ov (demap-track-w-area-ov track-w)) )
-    (demap--tools-remove-hook       'window-state-change-hook update-func)
-    (demap--tools-remove-hook-local 'demap-minimap-kill-hook  unhook-func buffer)
-    (when line-ov
-      (demap-line-ov-deactivate line-ov) )
-    (when area-ov
-      (demap-area-ov-deactivate area-ov) ) ))
+;;test-mode
 
-(defun demap-track-w-hook(track-w)
-  "Setup hooks to update TRACK-W when windows change."
-  (let ((update-func (apply-partially #'demap-track-w-update track-w))
-        (unhook-func (apply-partially #'demap-track-w-unhook track-w))
-        (buffer      (demap-minimap-buffer (demap-track-w-minimap track-w))) )
-    (add-hook 'window-state-change-hook update-func)
-    (demap--tools-add-hook-local 'demap-minimap-kill-hook unhook-func nil buffer) ))
+(defun demap--test-mode-init()
+  ""
+  (setf demap-test-mode t)
+  (add-hook 'window-state-change-hook (apply-partially #'demap-test-mode-update-as (demap-buffer-minimap)))
+  (add-hook 'demap-minimap-kill-hook  #'demap--test-mode-kill nil t)
+  (demap-minimap-protect-variables t 'demap-test-mode 'demap-test-mode-window-set-functions) )
 
-;;track-w construct
+(defun demap--test-mode-kill()
+  ""
+  (remove-hook 'window-state-change-hook (apply-partially #'demap-test-mode-update-as (demap-buffer-minimap)))
+  (remove-hook 'demap-minimap-kill-hook  #'demap--test-mode-kill t)
+  (demap-minimap-unprotect-variables t 'demap-test-mode 'demap-test-mode-window-set-functions)
+  (kill-local-variable 'demap-test-mode) )
 
-;;;###autoload
-(defun demap-track-w-construct(&rest args);;TODO: improve doc
-  "Constructor for objects of type `demap-track-w'.
-ARGS are passed to `demap-track-w-construct-unhooked'.
+(defun demap--test-mode-set(state)
+  ""
+  (cl-assert (demap-buffer-minimap) nil "buffer is not a demap-minimap-buffer: %s" (current-buffer))
+  (when (xor state demap-test-mode)
+    (if state
+        (demap--test-mode-init)
+      (demap--test-mode-kill) )
+    (message "-- %s" state) ))
 
-\(fn &key (MINIMAP (demap-minimap-construct)) (LINE-OV (demap-line-ov-construct minimap)) (AREA-OV (demap-area-ov-construct minimap)))"
-  (interactive)
-  (let ((track-w (apply #'demap-track-w-construct-unhooked args)))
-    (demap-track-w-hook track-w)
-    track-w ))
+(defun demap--test-mode-val() "." demap-test-mode)
+(gv-define-simple-setter demap--test-mode-val demap--test-mode-set)
+(define-minor-mode demap-test-mode
+  "hoho"
+  nil
+  nil
+  :group 'demap
+  :variable (demap--test-mode-val))
+
+
+;;;demap-test-line-mode-------
+
+;;demap test-line update
+
+(defun demap--test-line-mode-update()
+  ""
+  (let ((window demap-minimap-window)
+        (ov     demap-test-line-mode)
+        (buffer (current-buffer)) )
+    (if (eq (selected-window) window)
+        (with-current-buffer (window-buffer window)
+          (move-overlay ov
+                        (line-beginning-position)
+                        (+ (line-end-position) 1)
+                        buffer ))
+      (demap--test-line-mode-deactivate) )))
+
+(defun demap--test-line-mode-update-has(minimap)
+  ""
+  (with-current-buffer (demap-minimap-buffer minimap)
+    (demap--test-line-mode-update) ))
+
+;;test-line activate
+
+(defun demap--test-line-mode-activate()
+  ""
+  (overlay-put demap-test-line-mode 'face 'demap-current-line-face)
+  (add-hook 'post-command-hook (apply-partially #'demap--test-line-mode-update-has (demap-buffer-minimap)))
+  (demap--test-line-mode-update) )
+
+(defun demap--test-line-mode-deactivate()
+  ""
+  (overlay-put demap-test-line-mode 'face 'demap-current-line-inactive-face)
+  (remove-hook 'post-command-hook (apply-partially #'demap--test-line-mode-update-has (demap-buffer-minimap))) )
+
+(defun demap--test-line-mode-activate-when(window)
+  ""
+  (when window
+    (demap--test-line-mode-activate) ))
+
+;;test-line mode
+
+(defun demap--test-line-mode-init()
+  ""
+  (setq demap-test-line-mode (make-overlay 0 0))
+  (demap-minimap-protect-variables t 'demap-test-line-mode)
+  (add-hook 'demap-test-mode-window-set-functions #'demap--test-line-mode-activate-when nil t)
+  (add-hook 'demap-minimap-kill-hook #'demap--test-line-mode-kill nil t) )
+
+(defun demap--test-line-mode-kill()
+  ""
+  (demap--test-line-mode-deactivate)
+  (delete-overlay demap-test-line-mode)
+  (kill-local-variable 'demap-test-line-mode)
+  (demap-minimap-unprotect-variables t 'demap-test-line-mode)
+  (remove-hook 'demap-test-mode-window-set-functions #'demap--test-line-mode-activate-when t)
+  (remove-hook 'demap-minimap-kill-hook #'demap--test-line-mode-kill t) )
+
+(defun demap--test-line-mode-set(state)
+  ""
+  (when (xor state demap-test-line-mode)
+    (if state
+        (demap--test-line-mode-init)
+      (demap--test-line-mode-kill) )
+    (message "-- line - %s" state) ))
+
+(define-minor-mode demap-test-line-mode
+  "hoho"
+  :group 'demap
+  :variable (demap-test-line-mode . demap--test-line-mode-set))
+
+
+;;;demap-test-area-mode-------
+
+;;demap test-area update
+
+(defun demap--test-area-made-active-p()
+  "Determin if AREA-OV should be active or not."
+  (let ((window  demap-minimap-window)
+        (showing (demap-minimap-showing (demap-buffer-minimap))) )
+    (and (window-live-p window)
+         (eq (demap--tools-real-buffer (window-buffer window)) showing) )))
+
+(defun demap--test-area-mode-update()
+  ""
+  (let ((window demap-minimap-window))
+    (if (demap--test-area-made-active-p)
+        (move-overlay demap-test-area-mode
+                      (window-start window)
+                      (window-end window t)
+                      (current-buffer) )
+      (demap--test-area-mode-deactivate) )))
+
+(defun demap--test-area-mode-update-has(minimap &rest i)
+  ""
+  (ignore i)
+  (with-current-buffer (demap-minimap-buffer minimap)
+    (demap--test-area-mode-update) ))
+
+(defun demap--test-area-mode-update-window-as(minimap window &rest i)
+  ""
+  (ignore i)
+  (let ((buffer (demap-minimap-buffer minimap)))
+    (when (eq window (buffer-local-value 'demap-minimap-window buffer))
+      (with-current-buffer buffer
+        (demap--test-area-mode-update) ))))
+
+;;test-area activate
+
+(defun demap--test-area-mode-activate()
+  ""
+  (overlay-put demap-test-area-mode 'face 'demap-visible-region-face)
+  (let ((scrl-func (apply-partially #'demap--test-area-mode-update-window-as (demap-buffer-minimap)))
+        (size-func (apply-partially #'demap--test-area-mode-update-has       (demap-buffer-minimap))) )
+    (add-hook 'window-scroll-functions      scrl-func)
+    (add-hook 'window-size-change-functions size-func) )
+  (demap--test-area-mode-update) )
+
+(defun demap--test-area-mode-deactivate()
+  ""
+  (overlay-put demap-test-area-mode 'face 'demap-visible-region-inactive-face)
+  (let ((scrl-func (apply-partially #'demap--test-area-mode-update-window-as (demap-buffer-minimap)))
+        (size-func (apply-partially #'demap--test-area-mode-update-has       (demap-buffer-minimap))) )
+    (remove-hook 'window-scroll-functions      scrl-func)
+    (remove-hook 'window-size-change-functions size-func) ))
+
+(defun demap--test-area-mode-activate-when(window)
+  ""
+  (when window
+    (demap--test-area-mode-activate) ))
+
+;;test-area mode
+
+(defun demap--test-area-mode-init()
+  ""
+  (setq demap-test-area-mode (make-overlay 0 0))
+  (demap-minimap-protect-variables t 'demap-test-area-mode)
+  (add-hook 'demap-test-mode-window-set-functions #'demap--test-area-mode-activate-when nil t)
+  (add-hook 'demap-minimap-kill-hook #'demap--test-area-mode-kill nil t) )
+
+(defun demap--test-area-mode-kill()
+  ""
+  (demap--test-area-mode-deactivate)
+  (delete-overlay demap-test-area-mode)
+  (kill-local-variable 'demap-test-area-mode)
+  (demap-minimap-unprotect-variables t 'demap-test-area-mode)
+  (remove-hook 'demap-test-mode-window-set-functions #'demap--test-area-mode-activate-when t)
+  (remove-hook 'demap-minimap-kill-hook #'demap--test-area-mode-kill t) )
+
+(defun demap--test-area-mode-set(state)
+  ""
+  (when (xor state demap-test-area-mode)
+    (if state
+        (demap--test-area-mode-init)
+      (demap--test-area-mode-kill) )
+    (message "-- area - %s" state) ))
+
+(define-minor-mode demap-test-area-mode
+  "hoho"
+  :group 'demap
+  :variable (demap-test-area-mode . demap--test-area-mode-set))
+
 
 
 (provide 'demap-track-w)
