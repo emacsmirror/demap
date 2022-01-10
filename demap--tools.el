@@ -19,6 +19,11 @@
 ;;
 ;;; Code:
 
+(eval-when-compile
+  (when (>= emacs-major-version 28)
+    ;window.el doesn't provide 'window before version 28
+    (require 'window) ))
+
 ;;buffer
 
 (defun demap--tools-window-replace-buffer(buffer-or-name new-buffer-or-name)
@@ -46,6 +51,8 @@ see `buffer-base-buffer'."
   "Copy the buffer-local value of VARIABLE in FROM-BUFFER to TO-BUFFER.
 if VARABLE is not buffer local in FROM-BUFFER, then
 it will no longer be buffer local in TO-BUFFER."
+  (setq from-buffer (or from-buffer (current-buffer))
+        to-buffer   (or to-buffer   (current-buffer)) )
   (if (local-variable-p variable from-buffer)
       (setf (buffer-local-value variable to-buffer) (buffer-local-value variable from-buffer))
     (with-current-buffer to-buffer
@@ -68,6 +75,7 @@ in turn. Then evaluate RESULT to get return value,
 default nil. if LIST is not a list then evaluate
 BODY with VAR bound to the value of LIST.
 see `dolist'.
+
 \(fn (VAR LIST [RESULT]) BODY...)"
   (declare (indent 1))
   (let ((tempvar (make-symbol "tempvar")))
@@ -81,6 +89,7 @@ see `dolist'.
 (defmacro demap--tools-dolists-unsafe(specs &rest body)
   "Loop over all SPECS without type checking.
 unsafe version of `demap--tools-dolists'.
+
 \(fn ((VAR LIST [STEP])...) BODY...)"
   (declare (indent 1))
   (if specs
@@ -100,6 +109,7 @@ BODY with every combanation a LIST elements. STEP
 is evaluated each time the end of LIST is reached.
 returns the value of STEP in the first spec.
 see `dolist'.
+
 \(fn ((VAR LIST [STEP])...) BODY...)"
   (unless (listp specs)
     (signal 'wrong-type-argument (list 'consp specs)))
