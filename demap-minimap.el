@@ -254,8 +254,25 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
     (demap--minimap-buffer-set minimap (demap--minimap-buffer-construct name showing))
     minimap))
 
+;;minimap protect
+
+(defun demap--move-variable-minimap(var minimap)
+  ""
+  (demap--tools-copy-local-variable var nil (demap-minimap-buffer minimap)))
+
+(defun demap-minimap-protect-variables(local &rest vars)
+  ""
+  (dolist (v vars)
+    (let ((func (apply-partially 'demap--move-variable-minimap v)))
+      (add-hook 'demap-minimap-change-functions func nil local) )))
+
+(defun demap-minimap-unprotect-variables(local &rest vars)
+  ""
+  (dolist (v vars)
+    (let ((func (apply-partially 'demap--move-variable-minimap v)))
+      (remove-hook 'demap-minimap-change-functions func local) )))
 
 
 (provide 'demap-minimap)
-
+;(provide 'demap)
 ;;; demap-minimap.el ends here
