@@ -214,6 +214,10 @@ the old buffer will be killed."
       (kill-buffer old-buffer) )
     (demap--minimap-protect-from-base minimap) ))
 
+(defmacro demap-with-current-minimap(minimap-or-name &rest body)
+  ""
+  `(with-current-buffer (demap-minimap-buffer (demap-normalize-minimap ,minimap-or-name))
+     ,@body ))
 
 ;;minimap showing
 
