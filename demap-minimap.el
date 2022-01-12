@@ -78,6 +78,14 @@ the minimap being killed.")
 (defvar-local demap--current-minimap nil
   "The minimap associated with this buffer.")
 
+(defvar-local demap--minimap-window nil
+  "")
+
+(defcustom demap-minimap-window-set-functions nil
+  "."
+  :group 'demap
+  :type  'functions)
+
 ;;tools
 
 ;;;minimap struct
@@ -271,6 +279,37 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   (dolist (v vars)
     (let ((func (apply-partially 'demap--move-variable-minimap v)))
       (remove-hook 'demap-minimap-change-functions func local) )))
+
+;;minimap window
+
+(defun demap-current-minimap-window()
+  ""
+  demap--minimap-window)
+
+(defun demap-current-minimap-window-set(window)
+  ""
+  (when window
+    (setf demap--minimap-window window
+          (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window) ))
+  (with-demoted-errors "error in demap-window-set-functions: %s"
+    (run-hook-with-args 'demap-minimap-window-set-functions window) ))
+
+(gv-define-simple-setter demap-current-minimap-window demap-current-minimap-window-set)
+
+
+(defun demap-minimap-window(&optional minimap-or-name)
+  ""
+  (demap-with-current-minimap minimap-or-name
+    (demap-current-minimap-window) ))
+
+(defun demap-minimap-window-set(&optional minimap-or-name window)
+  ""
+  (demap-with-current-minimap minimap-or-name
+    (demap-current-minimap-window-set window) ))
+
+(gv-define-setter demap--minimap-window-as(window minimap-or-name)
+  `(demap--minimap-window-set-as ,minimap-or-name ,window))
+
 
 
 (provide 'demap-minimap)
