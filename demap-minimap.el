@@ -210,7 +210,9 @@ the old buffer will be killed."
         (kill-local-variable 'demap--current-minimap)
         (remove-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run t)
         (demap--tools-copy-local-variable 'demap-minimap-kill-hook old-buffer new-buffer)
-        (demap--minimap-change-functions-run minimap))
+        (demap--tools-copy-local-variable 'demap-minimap-window-set-functions old-buffer new-buffer)
+        (demap--tools-copy-local-variable 'demap--minimap-window old-buffer new-buffer)
+        (demap--minimap-change-functions-run minimap) )
       (kill-buffer old-buffer) )
     (demap--minimap-protect-from-base minimap) ))
 
@@ -292,11 +294,13 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 (defun demap-current-minimap-window-set(window)
   ""
-  (when window
-    (setf demap--minimap-window window
-          (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window) ))
-  (with-demoted-errors "error in demap-window-set-functions: %s"
-    (run-hook-with-args 'demap-minimap-window-set-functions window) ))
+  (let ((minimap (demap-buffer-minimap)))
+    (when window
+      (setf demap--minimap-window window
+            (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window) ))
+    (with-demoted-errors "error in demap-window-set-functions: %s"
+      (with-current-buffer (demap-minimap-buffer minimap)
+        (run-hook-with-args 'demap-minimap-window-set-functions window) ))))
 
 (gv-define-simple-setter demap-current-minimap-window demap-current-minimap-window-set)
 
