@@ -256,8 +256,9 @@ if the current window fails `demap-track-w-window-set'
 
 (defun demap--test-area-mode-activate-when(window)
   ""
-  (when window
-    (demap--test-area-mode-activate) ))
+  (if window
+      (demap--test-area-mode-activate)
+    (overlay-put demap-test-area-mode 'face 'demap-visible-region-inactive-face) ))
 
 ;;test-area mode
 
