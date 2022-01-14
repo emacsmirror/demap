@@ -86,6 +86,11 @@ the minimap being killed.")
   :group 'demap
   :type  'functions)
 
+(defcustom demap-minimap-window-sleep-hook nil
+  "."
+  :group 'demap
+  :type  'functions)
+
 ;;tools
 
 ;;;minimap struct
@@ -295,9 +300,8 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 (defun demap-current-minimap-window-set(window)
   ""
   (let ((minimap (demap-buffer-minimap)))
-    (when window
-      (setf demap--minimap-window window
-            (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window) ))
+    (setf demap--minimap-window window
+          (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window) )
     (with-demoted-errors "error in demap-window-set-functions: %s"
       (with-current-buffer (demap-minimap-buffer minimap)
         (run-hook-with-args 'demap-minimap-window-set-functions window) ))))
@@ -317,6 +321,17 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 (gv-define-setter demap--minimap-window-as(window minimap-or-name)
   `(demap--minimap-window-set-as ,minimap-or-name ,window))
+
+
+(defun demap-current-minimap-window-sleep()
+  ""
+  (with-demoted-errors "error in demap-minimap-window-sleep-functions: %s"
+    (run-hook-with-args 'demap-minimap-window-sleep-hook) ))
+
+(defun demap-minimap-window-sleep(minimap)
+  ""
+  (with-current-buffer (demap-minimap-buffer minimap)
+    (demap-current-minimap-window-sleep) ))
 
 
 

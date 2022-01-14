@@ -90,8 +90,9 @@ TRACK-W's minimap's buffer has the current buffer."
   "Update TRACK-W to test and show current window.
 if the current window fails `demap-track-w-window-set'
  then track-w is deactivated."
-  (setf (demap-current-minimap-window) (when (funcall demap-track-w-mode-update-p-func)
-                                         (selected-window) )))
+  (if (funcall demap-track-w-mode-update-p-func)
+      (setf (demap-current-minimap-window) (selected-window))
+    (demap-current-minimap-window-sleep) ))
 
 (defun demap-track-w-mode-update-as(minimap)
   ""
