@@ -32,10 +32,10 @@
 
 
 
-(defvar-local demap-test-mode nil
+(defvar-local demap-track-w-mode nil
   "")
 
-(defcustom demap-test-mode-update-p-func #'demap-test-mode-update-p-func-defalt
+(defcustom demap-track-w-mode-update-p-func #'demap-track-w-mode-update-p-func-defalt
   "Function to determin if demap-minimap should show the selected window.
 the function should accept one argument (TRACK-W)
 and return nil if TRACK-W should not show the
@@ -78,55 +78,55 @@ TRACK-W's minimap's buffer has the current buffer."
 
 
 
-;;;test-mode-------
+;;;track-w-mode-------
 
-;;test-mode update
+;;track-w-mode update
 
-(defun demap-test-mode-update-p-func-defalt()
+(defun demap-track-w-mode-update-p-func-defalt()
   "Determin if TRACK-W can fallow the current window."
   (buffer-file-name (window-buffer)) )
 
-(defun demap-test-mode-update()
+(defun demap-track-w-mode-update()
   "Update TRACK-W to test and show current window.
 if the current window fails `demap-track-w-window-set'
  then track-w is deactivated."
-  (setf (demap-current-minimap-window) (when (funcall demap-test-mode-update-p-func)
+  (setf (demap-current-minimap-window) (when (funcall demap-track-w-mode-update-p-func)
                                          (selected-window) )))
 
-(defun demap-test-mode-update-as(minimap)
+(defun demap-track-w-mode-update-as(minimap)
   ""
   (with-current-buffer (demap-minimap-buffer minimap)
-    (demap-test-mode-update) ))
+    (demap-track-w-mode-update) ))
 
-;;test-mode
+;;track-w-mode
 
-(defun demap--test-mode-init()
+(defun demap--track-w-mode-init()
   ""
-  (setf demap-test-mode t)
-  (add-hook 'window-state-change-hook (apply-partially #'demap-test-mode-update-as (demap-buffer-minimap)))
-  (add-hook 'demap-minimap-kill-hook  #'demap--test-mode-kill nil t) )
+  (setf demap-track-w-mode t)
+  (add-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap)))
+  (add-hook 'demap-minimap-kill-hook  #'demap--track-w-mode-kill nil t) )
 
-(defun demap--test-mode-kill()
+(defun demap--track-w-mode-kill()
   ""
-  (remove-hook 'window-state-change-hook (apply-partially #'demap-test-mode-update-as (demap-buffer-minimap)))
-  (remove-hook 'demap-minimap-kill-hook  #'demap--test-mode-kill t)
-  (kill-local-variable 'demap-test-mode) )
+  (remove-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap)))
+  (remove-hook 'demap-minimap-kill-hook  #'demap--track-w-mode-kill t)
+  (kill-local-variable 'demap-track-w-mode) )
 
-(defun demap--test-mode-set(state)
+(defun demap--track-w-mode-set(state)
   ""
   (cl-assert (demap-buffer-minimap) nil "buffer is not a demap-minimap-buffer: %s" (current-buffer))
-  (when (xor state demap-test-mode)
+  (when (xor state demap-track-w-mode)
     (if state
-        (demap--test-mode-init)
-      (demap--test-mode-kill) )
+        (demap--track-w-mode-init)
+      (demap--track-w-mode-kill) )
     (message "-- %s" state) ))
 
-(defun demap--test-mode-val() "." demap-test-mode)
-(gv-define-simple-setter demap--test-mode-val demap--test-mode-set)
-(define-minor-mode demap-test-mode
+(defun demap--track-w-mode-val() "." demap-track-w-mode)
+(gv-define-simple-setter demap--track-w-mode-val demap--track-w-mode-set)
+(define-minor-mode demap-track-w-mode
   "hoho"
   :group 'demap
-  :variable (demap--test-mode-val))
+  :variable (demap--track-w-mode-val))
 
 
 ;;;demap-test-line-mode-------
