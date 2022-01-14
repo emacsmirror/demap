@@ -45,7 +45,7 @@ TRACK-W's minimap's buffer has the current buffer."
   :group 'demap)
 
 
-(defvar-local demap-test-line-mode nil
+(defvar-local demap-current-line-mode nil
   "")
 
 (defface demap-current-line-face
@@ -129,14 +129,14 @@ if the current window fails `demap-track-w-window-set'
   :variable (demap--track-w-mode-val))
 
 
-;;;demap-test-line-mode-------
+;;;demap-current-line-mode-------
 
-;;demap test-line update
+;;demap current-line update
 
-(defun demap--test-line-mode-update()
+(defun demap--current-line-mode-update()
   ""
   (let ((window    (demap-current-minimap-window))
-        (ov        demap-test-line-mode)
+        (ov        demap-current-line-mode)
         (ov-buffer (current-buffer)) )
     (if (eq (selected-window) window)
         (with-current-buffer (window-buffer window)
@@ -144,61 +144,61 @@ if the current window fails `demap-track-w-window-set'
                         (line-beginning-position)
                         (+ (line-end-position) 1)
                         ov-buffer ))
-      (demap--test-line-mode-deactivate) )))
+      (demap--current-line-mode-deactivate) )))
 
-(defun demap--test-line-mode-update-has(minimap)
+(defun demap--current-line-mode-update-has(minimap)
   ""
   (with-current-buffer (demap-minimap-buffer minimap)
-    (demap--test-line-mode-update) ))
+    (demap--current-line-mode-update) ))
 
-;;test-line activate
+;;current-line activate
 
-(defun demap--test-line-mode-activate()
+(defun demap--current-line-mode-activate()
   ""
-  (overlay-put demap-test-line-mode 'face 'demap-current-line-face)
-  (add-hook 'post-command-hook (apply-partially #'demap--test-line-mode-update-has (demap-buffer-minimap)))
-  (demap--test-line-mode-update) )
+  (overlay-put demap-current-line-mode 'face 'demap-current-line-face)
+  (add-hook 'post-command-hook (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap)))
+  (demap--current-line-mode-update) )
 
-(defun demap--test-line-mode-deactivate()
+(defun demap--current-line-mode-deactivate()
   ""
-  (overlay-put demap-test-line-mode 'face 'demap-current-line-inactive-face)
-  (remove-hook 'post-command-hook (apply-partially #'demap--test-line-mode-update-has (demap-buffer-minimap))) )
+  (overlay-put demap-current-line-mode 'face 'demap-current-line-inactive-face)
+  (remove-hook 'post-command-hook (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap))) )
 
-(defun demap--test-line-mode-activate-when(window)
+(defun demap--current-line-mode-activate-when(window)
   ""
   (when window
-    (demap--test-line-mode-activate) ))
+    (demap--current-line-mode-activate) ))
 
-;;test-line mode
+;;current-line mode
 
-(defun demap--test-line-mode-init()
+(defun demap--current-line-mode-init()
   ""
-  (setq demap-test-line-mode (make-overlay 0 0))
-  (demap-minimap-protect-variables t 'demap-test-line-mode)
-  (add-hook 'demap-minimap-window-set-functions #'demap--test-line-mode-activate-when nil t)
-  (add-hook 'demap-minimap-kill-hook #'demap--test-line-mode-kill nil t) )
+  (setq demap-current-line-mode (make-overlay 0 0))
+  (demap-minimap-protect-variables t 'demap-current-line-mode)
+  (add-hook 'demap-minimap-window-set-functions #'demap--current-line-mode-activate-when nil t)
+  (add-hook 'demap-minimap-kill-hook #'demap--current-line-mode-kill nil t) )
 
-(defun demap--test-line-mode-kill()
+(defun demap--current-line-mode-kill()
   ""
-  (demap--test-line-mode-deactivate)
-  (delete-overlay demap-test-line-mode)
-  (kill-local-variable 'demap-test-line-mode)
-  (demap-minimap-unprotect-variables t 'demap-test-line-mode)
-  (remove-hook 'demap-minimap-window-set-functions #'demap--test-line-mode-activate-when t)
-  (remove-hook 'demap-minimap-kill-hook #'demap--test-line-mode-kill t) )
+  (demap--current-line-mode-deactivate)
+  (delete-overlay demap-current-line-mode)
+  (kill-local-variable 'demap-current-line-mode)
+  (demap-minimap-unprotect-variables t 'demap-current-line-mode)
+  (remove-hook 'demap-minimap-window-set-functions #'demap--current-line-mode-activate-when t)
+  (remove-hook 'demap-minimap-kill-hook #'demap--current-line-mode-kill t) )
 
-(defun demap--test-line-mode-set(state)
+(defun demap--current-line-mode-set(state)
   ""
-  (when (xor state demap-test-line-mode)
+  (when (xor state demap-current-line-mode)
     (if state
-        (demap--test-line-mode-init)
-      (demap--test-line-mode-kill) )
+        (demap--current-line-mode-init)
+      (demap--current-line-mode-kill) )
     (message "-- line - %s" state) ))
 
-(define-minor-mode demap-test-line-mode
+(define-minor-mode demap-current-line-mode
   "hoho"
   :group 'demap
-  :variable (demap-test-line-mode . demap--test-line-mode-set))
+  :variable (demap-current-line-mode . demap--current-line-mode-set))
 
 
 ;;;demap-test-area-mode-------
