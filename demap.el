@@ -24,5 +24,17 @@
 (require 'demap-track-w)
 
 
+;;;###autoload
+(defun demap-test()
+  ""
+  (x-focus-frame nil)
+  (let ((window  (split-window-right))
+        (minimap (demap-minimap-construct)) )
+    (set-window-buffer window (demap-minimap-buffer minimap))
+    (with-current-buffer (demap-minimap-buffer minimap)
+      (demap-test-mode)
+      (demap-test-area-mode)
+      (demap-test-line-mode) )))
+
 (provide 'demap)
 ;;; demap.el ends here
