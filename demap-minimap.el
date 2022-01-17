@@ -81,7 +81,7 @@ the minimap being killed.")
 (defvar-local demap--minimap-window nil
   "")
 
-(defcustom demap-minimap-window-set-functions nil
+(defcustom demap-minimap-window-set-hook nil
   "."
   :group 'demap
   :type  'functions)
@@ -215,7 +215,8 @@ the old buffer will be killed."
         (kill-local-variable 'demap--current-minimap)
         (remove-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run t)
         (demap--tools-copy-local-variable 'demap-minimap-kill-hook old-buffer new-buffer)
-        (demap--tools-copy-local-variable 'demap-minimap-window-set-functions old-buffer new-buffer)
+        (demap--tools-copy-local-variable 'demap-minimap-window-set-hook old-buffer new-buffer)
+        (demap--tools-copy-local-variable 'demap-minimap-window-sleep-hook  old-buffer new-buffer)
         (demap--tools-copy-local-variable 'demap--minimap-window old-buffer new-buffer)
         (demap--minimap-change-functions-run minimap) )
       (kill-buffer old-buffer) )
@@ -302,9 +303,10 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   (let ((minimap (demap-buffer-minimap)))
     (setf demap--minimap-window window
           (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window) )
-    (with-demoted-errors "error in demap-window-set-functions: %s"
+    (with-demoted-errors "error in demap-minimap-window-set-hook: %s"
+      ;minimap might have changed buffer by now
       (with-current-buffer (demap-minimap-buffer minimap)
-        (run-hook-with-args 'demap-minimap-window-set-functions window) ))))
+        (run-hooks 'demap-minimap-window-set-hook) ))))
 
 (gv-define-simple-setter demap-current-minimap-window demap-current-minimap-window-set)
 
@@ -325,8 +327,8 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 (defun demap-current-minimap-window-sleep()
   ""
-  (with-demoted-errors "error in demap-minimap-window-sleep-functions: %s"
-    (run-hook-with-args 'demap-minimap-window-sleep-hook) ))
+  (with-demoted-errors "error in demap-minimap-window-sleep-hook: %s"
+    (run-hooks 'demap-minimap-window-sleep-hook) ))
 
 (defun demap-minimap-window-sleep(minimap)
   ""
