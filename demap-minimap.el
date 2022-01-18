@@ -27,58 +27,67 @@
 
 (require 'demap--tools)
 
-;;varables
+;;variables
 
 (defface demap-minimap-font-face
   '((default :family "DejaVu Sans Mono" :height 30))
-  "Face used for the body of the minimap."
+  "Face used for demap-minimap buffers."
   :group 'demap)
-
 
 (defcustom demap-minimap-defalt-name "*Minimap*"
-  "The defalt name to use when making a new minimap."
-  :type 'string
-  :group 'demap)
+  "The defalt name for new demap-minimaps."
+  :group 'demap
+  :type 'string)
 
+(defcustom demap-minimap-change-functions nil
+  "Hook ran when changing a demap-minimap's buffer.
+when a demap-minimap needs to rebuild its buffer,
+it will copy all protected variables to the new
+buffer then run this hook has the old buffer.
+the functions in this hook should take one argument
+\(MINIMAP). MINIMAP is the minimap that is changing."
+  :group 'demap
+  :type  'hook )
 
-(defvar demap-minimap-change-functions nil
-  "Hook ran when changing what buffer a demap-minimap is showing.
-the functions should take one argument (MINIMAP).
-MINIMAP is the minimap that is changing.
-unlike `demap-minimap-change-once-functions', all
-buffer-local functions get moved to the new buffer
-after they are all ran.")
-
-(defvar demap-minimap-kill-hook nil
-  "Normal hook ran when killing a minimap.
-this is called from within `kill-buffer-hook' in
-the minimap's buffer. unlike
-`demap-minimap-change-once-functions', all buffer-local
-functions get moved to the new buffer when the
-minimap changes what it is showing.
-the minimap's buffer is current when the hook
-functions run. use `demap-buffer-minimap' to get
-the minimap being killed.")
+(defcustom demap-minimap-kill-hook nil
+  "Normal hook ran when killing a demap-minimap.
+note that demap-minimap sometimes needs to rebuild
+its buffer. when this happens, buffer-kill-hook
+gets called but not this hook."
+  :group 'demap
+  :type  'hook )
 
 (defcustom demap-minimap-window-set-hook nil
-  "."
+  "Normal hook ran when demap-minimap sets the window it is showing.
+the window demap-minimap is set to show can be got
+from `demap-current-minimap-window'."
   :group 'demap
-  :type  'functions)
+  :type  'hook )
 
 (defcustom demap-minimap-window-sleep-hook nil
-  "."
+  "Normal hook ran when demap-minimap rests.
+this is called when the window demap-minimap is
+showing is no longer active."
   :group 'demap
-  :type  'functions)
+  :type  'hook )
 
-(defvar demap-minimap-protected-variables nil
-  ".")
+(defcustom demap-minimap-protected-variables nil
+  "List of variables copy when demap-minimap rebuilds its buffer.
+the buffer-local values of these variables are copied from the old buffer to the
+new one when demap-minimap rebuilds its buffer. use
+`demap-minimap-protect-variables' and `demap-minimap-unprotect-variables' to add
+and remove variables from this list."
+  :group 'demap
+  :type  '(repeat variable) )
 
 
 (defvar-local demap--current-minimap nil
-  "The minimap associated with this buffer.")
+  "The minimap associated with this buffer.
+see `demap-buffer-minimap'.")
 
 (defvar-local demap--minimap-window nil
-  "")
+  "the window that the current minimap is showing.
+see `demap-current-minimap-window'.")
 
 ;;;minimap struct
 
@@ -107,35 +116,13 @@ Value is nil if MINIMAP is not a demap-minimap or if it has been killed."
   (and (demap-minimap-p minimap)
        (buffer-live-p (demap-minimap-buffer minimap)) ))
 
-(defun demap-remove-hook-minimap-local(hook func &optional minimap)
-  "Remove the function FUNC from the buffer local value of HOOK as MINIMAP's buffer."
-  (demap--tools-remove-hooks-local hook func (demap-minimap-buffer minimap)))
-
-(defun demap-smart-add-hook-minimap-local(hook func &optional depth minimap)
-  "Add the function FUNC to the buffer-local value of HOOK as MINIMAP's buffer.
-returns a function that when called, removes FUNC from HOOK.
-only usefall for `demap-minimap-change-functions'
-or `demap-minimap-kill-hook'.
-for DEPTH, see `add-hook'."
-  (with-current-buffer (demap-minimap-buffer minimap)
-    (add-hook hook func depth t)
-    (apply-partially #'demap-remove-hook-minimap-local hook func minimap)))
-
-(defun demap--minimap-generate-new-name (&optional name)
-  "Return a name not used by any buffer based on NAME.
-defalt to `demap-minimap-defalt-name'."
-  (generate-new-buffer-name (or name demap-minimap-defalt-name)) )
-
-
 ;;minimap protect
 
-(defun demap--move-variable-minimap(var minimap)
-  ""
-  (demap--tools-copy-local-variable var nil minimap)
-  nil )
-
 (defun demap--minimap-protected-copy-variables(new-buffer)
-  ""
+  "Copy the current buffers protected variables to NEW-BUFFER.
+the protected variables are the ones listed in
+`demap-minimap-protected-variables' along with a
+few hardcoded ones."
   (dolist (v (list 'demap-minimap-change-functions
                    'demap-minimap-kill-hook
                    'demap-minimap-window-set-hook
@@ -147,12 +134,27 @@ defalt to `demap-minimap-defalt-name'."
     (demap--tools-copy-local-variable v nil new-buffer) ))
 
 (defun demap-minimap-protect-variables(local &rest vars)
-  ""
+  "Add VARS to the list of protected variables.
+protected variables are listed in `demap-minimap-protected-variables'.
+VARS are not added if already present.
+
+if LOCAL is non-nil, VARS are added to the buffer-local
+value of `demap-minimap-protected-variables'. t is
+also added to signal to use the buffer-local and
+global value. this option is only useful if the current
+buffer is a demap-minimap buffer."
   (dolist (v vars)
     (add-hook 'demap-minimap-protected-variables v nil local) ))
 
 (defun demap-minimap-unprotect-variables(local &rest vars)
-  ""
+  "Remove VARS from the list of protected variables.
+protected variables are listed in `demap-minimap-protected-variables'.
+if VARS are not present then nuthing happens.
+
+if LOCAL is non-nil then VARS are removed from the
+buffer-local value of `demap-minimap-protected-variables'.
+
+see `demap-minimap-protect-variables'."
   (dolist (v vars)
     (remove-hook 'demap-minimap-protected-variables v local) ))
 
@@ -161,19 +163,25 @@ defalt to `demap-minimap-defalt-name'."
 (defun demap-buffer-minimap(&optional buffer-or-name)
   "Return the demap-minimap associated with BUFFER-OR-NAME.
 If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
-  (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)))
-
+  (buffer-local-value 'demap--current-minimap (window-normalize-buffer buffer-or-name)) )
 
 (defun demap--minimap-protect-from-base(minimap)
   "Make it so the buffer MINIMAP is showing can not accidentally kill MINIMAP.
 without this, killing the buffer that MINIMAP is showing will kill MINIMAP.
 this will make MINIMAP change to a blank buffer instead."
+  ;TODO: fix this. can cause problems if the base
+  ;buffer is killed in demap-minimap-change-hook
   (when (demap-minimap-showing minimap)
     (demap--tools-add-hook-local 'kill-buffer-hook
                                  (demap--tools-smart-add-hook-local 'kill-buffer-hook
                                                               (apply-partially #'demap-minimap-showing-set minimap nil)
                                                               nil (demap-minimap-showing minimap) )
                                  nil (demap-minimap-buffer minimap) )))
+
+(defun demap--minimap-generate-new-name(&optional name)
+  "Return a name not used by any buffer based on NAME.
+NAME defalts to `demap-minimap-defalt-name'."
+  (generate-new-buffer-name (or name demap-minimap-defalt-name)) )
 
 (defun demap--minimap-buffer-construct(&optional name show)
   "Construct a buffer that demap-minimap can use, using NAME and showing SHOW.
@@ -190,17 +198,17 @@ defalts to a blank buffer."
             truncate-lines      t
             buffer-read-only    t )
       (buffer-face-set 'demap-minimap-font-face)
-      buffer)))
+      buffer )))
 
 (defun demap--minimap-buffer-reconstruct(minimap &optional new-show)
   "Reconstruct the buffer used by MINIMAP but have it show NEW-SHOW.
 this will take the buffers name and any window that buffer was in.
 the new buffer will be returned but not assigned to MINIMAP."
-  (let (new-buffer old-buffer)
+  (let (old-buffer new-buffer)
     (setq old-buffer (demap-minimap-buffer minimap))
     (setq new-buffer (demap--minimap-buffer-construct (demap--tools-buffer-steal-name old-buffer) new-show) )
     (demap--tools-window-replace-buffer old-buffer new-buffer)
-    new-buffer))
+    new-buffer ))
 
 (defun demap--minimap-kill-hook-run()
   "Run hook `demap-minimap-kill-hook'."
@@ -208,7 +216,8 @@ the new buffer will be returned but not assigned to MINIMAP."
 
 (defun demap--minimap-buffer-set(minimap new-buffer)
   "Set the buffer used by MINIMAP to NEW-BUFFER.
-the old buffer will be killed."
+if MINIMAP already had a buffer, then the old one
+is killed."
   (let ((old-buffer (demap-minimap-buffer minimap)))
     (setf (demap-minimap-buffer minimap) new-buffer)
     (with-current-buffer new-buffer
@@ -216,18 +225,13 @@ the old buffer will be killed."
       (add-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run nil t) )
     (when old-buffer
       (with-current-buffer old-buffer
+        (demap--minimap-protected-copy-variables new-buffer)
         (kill-local-variable 'demap--current-minimap)
         (remove-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run t)
-        (demap--minimap-protected-copy-variables new-buffer)
         (with-demoted-errors "error in demap-minimap-change-functions: %s"
-          (run-hook-with-args 'demap-minimap-change-functions minimap) ))
-      (kill-buffer old-buffer) )
+          (run-hook-with-args 'demap-minimap-change-functions minimap) )
+        (kill-buffer old-buffer) ))
     (demap--minimap-protect-from-base minimap) ))
-
-(defmacro demap-with-current-minimap(minimap-or-name &rest body)
-  ""
-  `(with-current-buffer (demap-minimap-buffer (demap-normalize-minimap ,minimap-or-name))
-     ,@body ))
 
 ;;minimap showing
 
@@ -236,7 +240,10 @@ the old buffer will be killed."
 if MINIMAP-OR-NAME is blank or dead, return nil.
 note that a demap-minimap can have a blank buffer
 without being dead, don't rely on live minimaps
-returning a buffer."
+returning a buffer.
+
+this value can be set with setf but it is preferred
+to set `demap-minimap-window' instead when appropriate."
   (let ((minimap (demap-normalize-minimap minimap-or-name)))
     (when (demap-minimap-live-p minimap)
       (buffer-base-buffer (demap-minimap-buffer minimap)) )))
@@ -246,16 +253,19 @@ returning a buffer."
 Version of (`demap-minimap-showing-set' MINIMAP BUFFER)
 but without checking argument types or if buffer
 is already being shown.
-if BUFFER is nil, then the buffer will be blank."
+
+if BUFFER is nil, then MINIMAP will show a blank
+buffer."
   (let ((new-buffer (demap--minimap-buffer-reconstruct minimap buffer)))
     (demap--minimap-buffer-set minimap new-buffer) ))
 
 (defun demap-minimap-showing-set(minimap-or-name &optional buffer-or-name)
   "Set the buffer that minimap MINIMAP-OR-NAME is showing to BUFFER-OR-NAME.
-if BUFFER-OR-NAME is nil, then the buffer will be
-blank. if BUFFER-OR-NAME is already being shown, do
-nuthing.
-this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-NAME)"
+if BUFFER-OR-NAME is nil, then minimap-or-name will
+show a blank buffer. if BUFFER-OR-NAME is already
+being shown, nuthing happens.
+this is equivalent to
+\(setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-NAME)"
   (let ((minimap (demap-normalize-minimap minimap-or-name))
         (new-show (and buffer-or-name (window-normalize-buffer buffer-or-name))) )
     (when (and new-show (buffer-base-buffer new-show))
@@ -267,23 +277,42 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 (gv-define-setter demap-minimap-showing(buffer-or-name minimap-or-name)
   `(demap-minimap-showing-set ,minimap-or-name ,buffer-or-name))
 
-
 ;;minimap construct
 
+;;;###autoload
 (defun demap-minimap-construct(&optional name showing)
-  ""
+  "Construct a demap-minimap.
+NAME defalts to `demap-minimap-defalt-name'.
+SHOWING defalts to a blank buffer."
   (let ((minimap (demap--minimap-construct)))
     (demap--minimap-buffer-set minimap (demap--minimap-buffer-construct name showing))
     minimap))
 
-;;minimap window
+;;minimap window current
 
 (defun demap-current-minimap-window()
-  ""
-  demap--minimap-window)
+  "The window the current demap-minimap is showing.
+demap-minimap is not guaranteed to be showing the
+buffer in this window.
+
+you can use setf to set this value. setting this
+value changes what buffer the current minimap is
+showing to the buffer in window. setting this to
+nil will make minimap show a blank buffer.
+
+current buffer might be killed after setting this."
+  demap--minimap-window )
 
 (defun demap-current-minimap-window-set(window)
-  ""
+  "Set the window the current demap-minimap is showing to WINDOW.
+setting this value changes what buffer the current
+minimap is showing to the buffer in window. setting
+this to nil will make minimap show a blank buffer.
+
+current buffer might be killed after setting this.
+
+this is the same has
+\(setf (demap-current-minimap-window) WINDOW)."
   (let ((minimap (demap-buffer-minimap)))
     (setf demap--minimap-window window
           (demap-minimap-showing (demap-buffer-minimap)) (window-buffer window) )
@@ -294,15 +323,29 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 (gv-define-simple-setter demap-current-minimap-window demap-current-minimap-window-set)
 
+;;minimap window
 
 (defun demap-minimap-window(&optional minimap-or-name)
-  ""
-  (demap-with-current-minimap minimap-or-name
+  "The window that MINIMAP-OR-NAME is showing.
+MINIMAP-OR-NAME is not guaranteed to be showing the
+buffer in this window.
+
+you can use setf to set this value. setting this
+value changes what buffer MINIMAP-OR-NAME is
+showing to the buffer in window. setting this to
+nil will make MINIMAP-OR-NAME show a blank buffer."
+  (with-current-buffer (demap-minimap-buffer (demap-normalize-minimap minimap-or-name))
     (demap-current-minimap-window) ))
 
 (defun demap-minimap-window-set(&optional minimap-or-name window)
-  ""
-  (demap-with-current-minimap minimap-or-name
+  "Set the window MINIMAP-OR-NAME is showing to WINDOW.
+setting this value changes what buffer MINIMAP-OR-NAME
+is showing to the buffer in window. setting this to
+nil will make MINIMAP-OR-NAME show a blank buffer.
+
+this is the same has
+\(setf (demap-minimap-window MINIMAP-OR-NAME) WINDOW)."
+  (with-current-buffer (demap-minimap-buffer (demap-normalize-minimap minimap-or-name))
     (demap-current-minimap-window-set window) ))
 
 (gv-define-setter demap--minimap-window-as(window minimap-or-name)
@@ -310,12 +353,12 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
 
 
 (defun demap-current-minimap-window-sleep()
-  ""
+  "Run hook `demap-minimap-window-sleep-hook'."
   (with-demoted-errors "error in demap-minimap-window-sleep-hook: %s"
     (run-hooks 'demap-minimap-window-sleep-hook) ))
 
 (defun demap-minimap-window-sleep(minimap)
-  ""
+  "Run hook `demap-minimap-window-sleep-hook' has MINIMAP."
   (with-current-buffer (demap-minimap-buffer minimap)
     (demap-current-minimap-window-sleep) ))
 
