@@ -68,6 +68,19 @@ otherwise nil."
 
 ;;dolist
 
+(defmacro demap--tools-dolist-hook(spec &rest body)
+  "Loop over all the functions in HOOK.
+SPEC
+
+\(fn (VAR HOOK [RESULT]) BODY...)"
+  (declare (indent 1))
+  `(progn
+     (run-hook-wrapped ,(nth 1 spec)
+                       (lambda(,(nth 0 spec))
+                         ,@body
+                         nil ))
+     ,(nth 2 spec) ))
+
 (defmacro demap--tools-dolist(spec &rest body)
   "Loop over a list or object SPEC.
 Evaluate BODY with VAR bound to each car from LIST,
