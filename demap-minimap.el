@@ -41,20 +41,6 @@
   :group 'demap)
 
 
-(defvar demap-minimap-change-once-functions nil
-  "Hook ran when changing what buffer a demap-minimap is showing.
-demap has to replace its buffer whenever it changes
-what it shows. this hook is applied after
-everything has been moved to the new buffer but
-before the old one gets killed. the functions
-should take one argument (MINIMAP). MINIMAP is the
-minimap that is changing.
-sense the buffer will be deleted after this hook is
-applied, all buffer-local functions will only be applied
-once.
-for a hook that is not reset every change,
-see `demap-minimap-change-functions'.")
-
 (defvar demap-minimap-change-functions nil
   "Hook ran when changing what buffer a demap-minimap is showing.
 the functions should take one argument (MINIMAP).
@@ -74,13 +60,6 @@ the minimap's buffer is current when the hook
 functions run. use `demap-buffer-minimap' to get
 the minimap being killed.")
 
-
-(defvar-local demap--current-minimap nil
-  "The minimap associated with this buffer.")
-
-(defvar-local demap--minimap-window nil
-  "")
-
 (defcustom demap-minimap-window-set-hook nil
   "."
   :group 'demap
@@ -91,7 +70,15 @@ the minimap being killed.")
   :group 'demap
   :type  'functions)
 
-;;tools
+(defvar demap-minimap-protected-variables nil
+  ".")
+
+
+(defvar-local demap--current-minimap nil
+  "The minimap associated with this buffer.")
+
+(defvar-local demap--minimap-window nil
+  "")
 
 ;;;minimap struct
 
@@ -139,6 +126,35 @@ for DEPTH, see `add-hook'."
 defalt to `demap-minimap-defalt-name'."
   (generate-new-buffer-name (or name demap-minimap-defalt-name)) )
 
+
+;;minimap protect
+
+(defun demap--move-variable-minimap(var minimap)
+  ""
+  (demap--tools-copy-local-variable var nil minimap)
+  nil )
+
+(defun demap--minimap-protected-copy-variables(new-buffer)
+  ""
+  (dolist (v (list 'demap-minimap-change-functions
+                   'demap-minimap-kill-hook
+                   'demap-minimap-window-set-hook
+                   'demap-minimap-window-sleep-hook
+                   'demap-minimap-protected-variables
+                   'demap--minimap-window ))
+    (demap--tools-copy-local-variable v nil new-buffer) )
+  (demap--tools-dolist-hook (v 'demap-minimap-protected-variables)
+    (demap--tools-copy-local-variable v nil new-buffer) ))
+
+(defun demap-minimap-protect-variables(local &rest vars)
+  ""
+  (dolist (v vars)
+    (add-hook 'demap-minimap-protected-variables v nil local) ))
+
+(defun demap-minimap-unprotect-variables(local &rest vars)
+  ""
+  (dolist (v vars)
+    (remove-hook 'demap-minimap-protected-variables v local) ))
 
 ;;minimap buffer
 
@@ -190,18 +206,6 @@ the new buffer will be returned but not assigned to MINIMAP."
   "Run hook `demap-minimap-kill-hook'."
   (run-hooks 'demap-minimap-kill-hook))
 
-(defun demap--minimap-change-functions-run(minimap)
-  "Run minimap change function hook with argument MINIMAP.
-runs hooks `demap-minimap-change-once-functions' and
-`demap-minimap-change-functions'. also
-copy `demap-minimap-change-functions'
-local value to MINIMAP's buffer."
-  (with-demoted-errors "error in demap-minimap-change-functions: %s"
-    (run-hook-with-args 'demap-minimap-change-once-functions minimap) )
-  (with-demoted-errors "error in demap-minimap-persistant-change-functions: %s"
-    (run-hook-with-args 'demap-minimap-change-functions minimap) )
-  (demap--tools-copy-local-variable 'demap-minimap-change-functions (current-buffer) (demap-minimap-buffer minimap)) )
-
 (defun demap--minimap-buffer-set(minimap new-buffer)
   "Set the buffer used by MINIMAP to NEW-BUFFER.
 the old buffer will be killed."
@@ -214,11 +218,9 @@ the old buffer will be killed."
       (with-current-buffer old-buffer
         (kill-local-variable 'demap--current-minimap)
         (remove-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run t)
-        (demap--tools-copy-local-variable 'demap-minimap-kill-hook old-buffer new-buffer)
-        (demap--tools-copy-local-variable 'demap-minimap-window-set-hook old-buffer new-buffer)
-        (demap--tools-copy-local-variable 'demap-minimap-window-sleep-hook  old-buffer new-buffer)
-        (demap--tools-copy-local-variable 'demap--minimap-window old-buffer new-buffer)
-        (demap--minimap-change-functions-run minimap) )
+        (demap--minimap-protected-copy-variables new-buffer)
+        (with-demoted-errors "error in demap-minimap-change-functions: %s"
+          (run-hook-with-args 'demap-minimap-change-functions minimap) ))
       (kill-buffer old-buffer) )
     (demap--minimap-protect-from-base minimap) ))
 
@@ -273,24 +275,6 @@ this is equivalent to (setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-
   (let ((minimap (demap--minimap-construct)))
     (demap--minimap-buffer-set minimap (demap--minimap-buffer-construct name showing))
     minimap))
-
-;;minimap protect
-
-(defun demap--move-variable-minimap(var minimap)
-  ""
-  (demap--tools-copy-local-variable var nil (demap-minimap-buffer minimap)))
-
-(defun demap-minimap-protect-variables(local &rest vars)
-  ""
-  (dolist (v vars)
-    (let ((func (apply-partially 'demap--move-variable-minimap v)))
-      (add-hook 'demap-minimap-change-functions func nil local) )))
-
-(defun demap-minimap-unprotect-variables(local &rest vars)
-  ""
-  (dolist (v vars)
-    (let ((func (apply-partially 'demap--move-variable-minimap v)))
-      (remove-hook 'demap-minimap-change-functions func local) )))
 
 ;;minimap window
 
