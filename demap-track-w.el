@@ -76,6 +76,247 @@ TRACK-W's minimap's buffer has the current buffer."
   "Face used to highlight visible region in demap-minimap when not active."
   :group 'demap)
 
+;;;define minimap miner mode-------
+
+;; (defun demap--current-line-mode-set(state)
+;;   ""
+;;   (when (xor state demap-current-line-mode)
+;;     (if state
+;;         (demap--current-line-mode-init)
+;;       (demap--current-line-mode-kill) )
+;;     (message "-- line - %s" state) ))
+
+;; (define-minor-mode demap-current-line-mode
+;;   "hoho"
+;;   :group 'demap
+;;   :variable (demap-current-line-mode . demap--current-line-mode-set))
+(eval-and-compile
+  (defun demap--delete-redundant-keys(key seq)
+    ""
+    (let ((spot     seq)
+          (old-spot nil) )
+      (while spot
+        (when (eq (car spot) key)
+          (when old-spot
+            (setf (car old-spot) (nth    2 old-spot)
+                  (cdr old-spot) (nthcdr 3 old-spot) ))
+          (setq old-spot spot) )
+        (setq spot (nthcdr 2 spot)) ))
+    seq )
+
+  (defun demap--define-mode-var-get-doc(var &optional globalp funcp mode-func mode-pretty-name)
+    ""
+    (let ((doc-g1 "Non-nil if %s is enabled.
+See the `%s' command
+for a description of this minor mode." )
+          (doc-g2 "
+Setting this variable directly does not take effect;
+either customize it (see the info node `Easy Customization')
+or call the function `%s'." )
+          (doc-local "Non-nil if %s is enabled.
+Use the command `%s' to change this variable." ))
+      (setq mode-func        (or mode-func
+                                 var )
+            mode-pretty-name (or mode-pretty-name
+                                 mode-func ))
+      (if globalp
+          (concat (format doc-g1 mode-pretty-name mode-func)
+                  (when funcp (format doc-g2 mode-func)) )
+        (format doc-local mode-pretty-name mode-func) ))))
+
+(defmacro demap--define-mode-var(var init-value &optional globalp funcp doc &rest args)
+  ""
+  (declare (doc-string 5))
+  (if globalp
+      (progn
+        ;;TODO: maybe remove this line
+        (setq args (demap--delete-redundant-keys :require args))
+        `(defcustom ,var ,init-value
+           ,(or doc (demap--define-mode-var-get-doc var t funcp nil nil))
+           ,@(unless (memq :group args)
+               '(:group ',(intern (replace-regexp-in-string
+                                   "-mode\\'" "" (symbol-name var) ))))
+           ,@(unless (memq :set args)
+               '(:set #'custom-set-minor-mode) )
+           ,@(unless (memq :initialize args)
+               '(:initialize 'custom-initialize-default) )
+           ,@(unless (memq :type args)
+               '(:type 'boolean) )
+           ,@args ))
+    `(progn
+       :autoload-end
+       (defvar-local ,var ,init-value
+         ,(or doc (demap--define-mode-var-get-doc var nil nil nil nil)) ))))
+
+(defmacro demap--define-mode-hook(hook mode)
+  ""
+  `(progn
+     (defvar ,hook nil)
+     (unless (get ',hook 'variable-documentation)
+       (put ',hook 'variable-documentation
+            ,(format
+              "Hook run after entering or leaving `%s'.
+No problems result if this variable is not bound.
+`add-hook' automatically binds it.  (This is true for all hook variables.)"
+              mode )))))
+
+(defmacro demap--define-mode-keymap-var(var keymap doc)
+  ""
+  `(defvar ,var
+     (let ((km ,keymap))
+       (cond ((keymapp km) km)
+             ((listp   km) (easy-mmode-define-keymap km))
+             (t            (error "Invalid keymap %S" km)) ))
+     ,doc ))
+
+(defmacro demap--define-mode-tail(getter lighter keymap-sym keymapp)
+  ""
+  (let ((modevar (pcase getter
+                   (`(default-value ',v) v)
+                   (_ getter) )))
+    (if (symbolp modevar)
+        `(with-no-warnings
+           (add-minor-mode ',modevar ',lighter
+                           ,(if keymapp
+                                keymap-sym
+                              `(when (boundp ',keymap-sym)
+                                 ,keymap-sym ))))
+      (when (or lighter keymapp)
+        (error ":lighter and :keymap unsupported with mode expression %S" getter) ))))
+
+
+(defmacro demap-define-minimap-miner-mode(mode doc &rest body)
+  "
+
+\(fn MODE DOC &optional INIT-VALUE LIGHTER KEYMAP &rest BODY)"
+  (declare (doc-string 2)
+           (indent     1))
+  (let (globalp
+        init-value
+        lighter
+        keymap
+        (construct-variable t);variable
+        (setter mode)
+        (getter mode)
+        after-hook
+        (restr  '())
+
+        (last-message-symbol (make-symbol "last-message"))
+        keymap-sym
+        hook
+        hook-on
+        hook-off
+
+        (mode-name (symbol-name mode))
+        (protect  '())
+        init-func
+        kill-func
+        set-func )
+    ;optional args
+    (and
+     (unless (keywordp (car body))
+       (setq init-value (pop body)) )
+     (unless (keywordp (car body))
+       (setq lighter    (pop body)) )
+     (unless (keywordp (car body))
+       (setq keymap     (pop body)) ))
+    ;process keys
+    (while (keywordp (car body))
+      (let ((key (pop body))
+            (val (pop body)) )
+        (pcase key
+          (:global     (setq globalp    val))
+          (:init-value (setq init-value val))
+          (:lighter    (setq lighter    (purecopy val)))
+          (:keymap     (setq keymap     val))
+          (:variable   (setq construct-variable nil)
+                       (setq setter     val ;TODO: make this more acuret
+                             getter     val ))
+          (:after-hook (setq after-hook val))
+          ;;new
+          (:protect    (if (symbolp val)
+                           (push val protect)
+                         (setq protect (append val protect)) ))
+          (:init-func  (setq init-func  val))
+          (:kill-func  (setq kill-func  val))
+          (:set-func   (setq set-func   val))
+          ;;rest
+          (_           (setq restr (append (list val key) restr)) ))))
+    ;set defalts
+    (setq keymap-sym (if (and keymap (symbolp keymap))
+                             keymap
+                       (intern (concat mode-name "-map")) )
+          hook     (intern (concat mode-name "-hook"    ))
+          hook-on  (intern (concat mode-name "-on-hook" ))
+          hook-off (intern (concat mode-name "-off-hook")) )
+    (setq init-func  (or init-func `(setf ,setter t  ))
+          kill-func  (or kill-func `(setf ,setter nil))
+          set-func   (or set-func
+                         (let ((state-var (make-symbol "--state")))
+                           `(lambda(,state-var)
+                              (if ,state-var
+                                  ,(if (symbolp init-func)
+                                       `(,init-func)
+                                     init-func )
+                                ,(if (symbolp kill-func)
+                                     `(,kill-func)
+                                   kill-func ))))))
+    (when (and construct-variable globalp)
+      (push mode protect) )
+    ;;construct
+    `(progn
+       ;;variable
+       ,@(when construct-variable
+           `((demap--define-mode-var ,mode ,init-value
+                                    ,globalp ,(and body t) nil
+                                    ,@(nreverse restr) )))
+       ;;functions
+       (defun ,mode (&optional arg)
+         ,doc
+	 (interactive (list (or current-prefix-arg 'toggle)))
+         (let ((,last-message-symbol (current-message)))
+           ;;set
+           (let ((state (if (eq arg 'toggle)
+                            (not ,getter)
+                          (> (prefix-numeric-value arg) 0) )))
+             (when (xor state ,getter)
+               ,(if (symbolp set-func)
+                    `(,set-func state)
+                  `(funcall ,set-func state) )
+                                        ;if varable did change
+               (when (not (xor state ,getter))
+                 (if state
+                     (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
+                   (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect)) ))))
+           ;;body
+           ,@body
+           ;;hooks
+           (run-hooks ',hook (if ,getter
+                                 ',hook-on
+                               ',hook-off ))
+           (when (called-interactively-p 'any)
+             ,(when (and globalp construct-variable)
+                `(customize-mark-as-set ',mode) )
+             ;; Avoid overwriting a message shown by the body,
+             ;; but do overwrite previous messages.
+             (unless (and (current-message)
+                          (not (equal ,last-message-symbol (current-message))) )
+               (message ,(concat "pretty-name"
+                                 " %sabled"
+                                 (unless globalp " in current buffer") )
+                        (if ,getter
+                            "en"
+                          "dis" ))))
+           ;;end
+           ,@(when after-hook (list after-hook))
+           (force-mode-line-update)
+           ,getter ))
+
+       :autoload-end
+       (demap--define-mode-hook ,hook ,mode)
+       ,@(unless (symbolp keymap)
+          `((demap--define-mode-keymap-var ,keymap-sym ,keymap ,(format "Keymap for `%s'." mode))))
+       (demap--define-mode-tail ,getter ,lighter ,keymap-sym ,keymap) )))
 
 
 ;;;track-w-mode-------
@@ -204,6 +445,11 @@ if the current window fails `demap-track-w-window-set'
   :group 'demap
   :variable (demap-current-line-mode . demap--current-line-mode-set))
 
+(define-minor-mode demap-testf-mode
+  "hoho"
+  :global  t
+  :require 'demap
+  :group   'demap )
 
 ;;;demap-test-area-mode-------
 
