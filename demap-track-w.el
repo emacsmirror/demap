@@ -286,8 +286,11 @@ No problems result if this variable is not bound.
                                         ;if varable did change
                (when (not (xor state ,getter))
                  (if state
-                     (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                   (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect)) ))))
+                     (progn
+                       (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
+                       (add-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) nil t) )
+                   (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
+                   (remove-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) t) ))))
            ;;body
            ,@body
            ;;hooks
