@@ -261,7 +261,7 @@ No problems result if this variable is not bound.
                                 ,(if (symbolp kill-func)
                                      `(,kill-func)
                                    kill-func ))))))
-    (when (and construct-variable globalp)
+    (when (and construct-variable (not globalp))
       (push mode protect) )
     ;;construct
     `(progn
