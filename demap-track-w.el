@@ -387,82 +387,82 @@ if the current window fails `demap-track-w-window-set'
     (demap--current-line-mode-deactivate) ))
 
 
-;;;test-area-mode-------
+;;;visible-region-mode-------
 
-(demap-define-minimap-miner-mode demap-test-area-mode
+(demap-define-minimap-miner-mode demap-visible-region-mode
   ""
   :group 'demap
   :init-func (progn
-               (setq demap-test-area-mode (make-overlay 0 0))
-               (add-hook 'demap-minimap-window-set-hook   #'demap--test-area-mode-activate-if nil t)
-               (add-hook 'demap-minimap-window-sleep-hook #'demap--test-area-mode-sleep       nil t) )
+               (setq demap-visible-region-mode (make-overlay 0 0))
+               (add-hook 'demap-minimap-window-set-hook   #'demap--visible-region-mode-activate-if nil t)
+               (add-hook 'demap-minimap-window-sleep-hook #'demap--visible-region-mode-sleep       nil t) )
   :kill-func (progn
-               (demap--test-area-mode-deactivate)
-               (delete-overlay demap-test-area-mode)
-               (kill-local-variable 'demap-test-area-mode)
-               (remove-hook 'demap-minimap-window-set-hook   #'demap--test-area-mode-activate-if t)
-               (remove-hook 'demap-minimap-window-sleep-hook #'demap--test-area-mode-sleep       t) ))
+               (demap--visible-region-mode-deactivate)
+               (delete-overlay demap-visible-region-mode)
+               (kill-local-variable 'demap-visible-region-mode)
+               (remove-hook 'demap-minimap-window-set-hook   #'demap--visible-region-mode-activate-if t)
+               (remove-hook 'demap-minimap-window-sleep-hook #'demap--visible-region-mode-sleep       t) ))
 
-;;demap test-area update
+;;visible-region-mode update
 
-(defun demap--test-area-made-active-p()
+(defun demap--visible-region-made-active-p()
   "Determin if AREA-OV should be active or not."
   (let ((window  (demap-current-minimap-window))
         (showing (demap-minimap-showing (demap-buffer-minimap))) )
     (and (window-live-p window)
          (eq (demap--tools-real-buffer (window-buffer window)) showing) )))
 
-(defun demap--test-area-mode-update()
+(defun demap--visible-region-mode-update()
   ""
   (let ((window (demap-current-minimap-window)))
-    (if (demap--test-area-made-active-p)
-        (move-overlay demap-test-area-mode
+    (if (demap--visible-region-made-active-p)
+        (move-overlay demap-visible-region-mode
                       (window-start window)
                       (window-end window t)
                       (current-buffer) )
-      (demap--test-area-mode-deactivate) )))
+      (demap--visible-region-mode-deactivate) )))
 
-(defun demap--test-area-mode-update-has(minimap &rest i)
+(defun demap--visible-region-mode-update-has(minimap &rest i)
   ""
   (ignore i)
   (with-current-buffer (demap-minimap-buffer minimap)
-    (demap--test-area-mode-update) ))
+    (demap--visible-region-mode-update) ))
 
-(defun demap--test-area-mode-update-window-as(minimap window &rest i)
+(defun demap--visible-region-mode-update-window-as(minimap window &rest i)
   ""
   (ignore i)
   (when (eq window (demap-minimap-window minimap) )
     (with-current-buffer (demap-minimap-buffer minimap)
-      (demap--test-area-mode-update) )))
+      (demap--visible-region-mode-update) )))
 
-;;test-area activate
+;;visible-region-mode activate
 
-(defun demap--test-area-mode-activate()
+(defun demap--visible-region-mode-activate()
   ""
-  (overlay-put demap-test-area-mode 'face 'demap-visible-region-face)
-  (let ((scrl-func (apply-partially #'demap--test-area-mode-update-window-as (demap-buffer-minimap)))
-        (size-func (apply-partially #'demap--test-area-mode-update-has       (demap-buffer-minimap))) )
+  (overlay-put demap-visible-region-mode 'face 'demap-visible-region-face)
+  (let ((scrl-func (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap)))
+        (size-func (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))) )
     (add-hook 'window-scroll-functions      scrl-func)
     (add-hook 'window-size-change-functions size-func) )
-  (demap--test-area-mode-update) )
+  (demap--visible-region-mode-update) )
 
-(defun demap--test-area-mode-deactivate()
+(defun demap--visible-region-mode-deactivate()
   ""
-  (overlay-put demap-test-area-mode 'face 'demap-visible-region-inactive-face)
-  (let ((scrl-func (apply-partially #'demap--test-area-mode-update-window-as (demap-buffer-minimap)))
-        (size-func (apply-partially #'demap--test-area-mode-update-has       (demap-buffer-minimap))) )
+  (overlay-put demap-visible-region-mode 'face 'demap-visible-region-inactive-face)
+  (let ((scrl-func (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap)))
+        (size-func (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))) )
     (remove-hook 'window-scroll-functions      scrl-func)
     (remove-hook 'window-size-change-functions size-func) ))
 
-(defun demap--test-area-mode-activate-if()
+(defun demap--visible-region-mode-activate-if()
   ""
   (if (demap-current-minimap-window)
-      (demap--test-area-mode-activate)
-    (demap--test-area-mode-deactivate) ))
+      (demap--visible-region-mode-activate)
+    (demap--visible-region-mode-deactivate) ))
 
-(defun demap--test-area-mode-sleep()
+(defun demap--visible-region-mode-sleep()
   ""
-  (overlay-put demap-test-area-mode 'face 'demap-visible-region-inactive-face) )
+  (overlay-put demap-visible-region-mode 'face 'demap-visible-region-inactive-face) )
 
 
 (provide 'demap-track-w)
