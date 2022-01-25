@@ -31,10 +31,6 @@
 
 
 
-
-(defvar-local demap-track-w-mode nil
-  "")
-
 (defcustom demap-track-w-mode-update-p-func #'demap-track-w-mode-update-p-func-defalt
   "Function to determin if demap-minimap should show the selected window.
 the function should accept one argument (TRACK-W)
@@ -43,10 +39,6 @@ selected window. this function is called with
 TRACK-W's minimap's buffer has the current buffer."
   :type 'function
   :group 'demap)
-
-
-(defvar-local demap-current-line-mode nil
-  "")
 
 (defface demap-current-line-face
   '((((background dark)) (:background "gray50" :extend t))
@@ -59,10 +51,6 @@ TRACK-W's minimap's buffer has the current buffer."
     (t (:background "gray77" :extend t)))
   "Face used to highlight the current line in demap-minimap when not active."
   :group 'demap)
-
-
-(defvar-local demap-test-area-mode nil
-  "")
 
 (defface demap-visible-region-face
   '((((background dark)) (:background "gray10" :extend t))
@@ -78,18 +66,6 @@ TRACK-W's minimap's buffer has the current buffer."
 
 ;;;define minimap miner mode-------
 
-;; (defun demap--current-line-mode-set(state)
-;;   ""
-;;   (when (xor state demap-current-line-mode)
-;;     (if state
-;;         (demap--current-line-mode-init)
-;;       (demap--current-line-mode-kill) )
-;;     (message "-- line - %s" state) ))
-
-;; (define-minor-mode demap-current-line-mode
-;;   "hoho"
-;;   :group 'demap
-;;   :variable (demap-current-line-mode . demap--current-line-mode-set))
 (eval-and-compile
   (defun demap--delete-redundant-keys(key seq)
     ""
@@ -324,6 +300,16 @@ No problems result if this variable is not bound.
 
 ;;;track-w-mode-------
 
+(demap-define-minimap-miner-mode demap-track-w-mode
+  "poo"
+  :group 'demap
+  :init-func (progn
+               (setf demap-track-w-mode t)
+               (add-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap))) )
+  :kill-func (progn
+               (remove-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap)))
+               (kill-local-variable 'demap-track-w-mode) ) )
+
 ;;track-w-mode update
 
 (defun demap-track-w-mode-update-p-func-defalt()
@@ -343,40 +329,25 @@ if the current window fails `demap-track-w-window-set'
   (with-current-buffer (demap-minimap-buffer minimap)
     (demap-track-w-mode-update) ))
 
-;;track-w-mode
 
-(defun demap--track-w-mode-init()
+;;;current-line-mode-------
+
+(demap-define-minimap-miner-mode demap-current-line-mode
   ""
-  (setf demap-track-w-mode t)
-  (add-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap)))
-  (add-hook 'demap-minimap-kill-hook  #'demap--track-w-mode-kill nil t) )
-
-(defun demap--track-w-mode-kill()
-  ""
-  (remove-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap)))
-  (remove-hook 'demap-minimap-kill-hook  #'demap--track-w-mode-kill t)
-  (kill-local-variable 'demap-track-w-mode) )
-
-(defun demap--track-w-mode-set(state)
-  ""
-  (cl-assert (demap-buffer-minimap) nil "buffer is not a demap-minimap-buffer: %s" (current-buffer))
-  (when (xor state demap-track-w-mode)
-    (if state
-        (demap--track-w-mode-init)
-      (demap--track-w-mode-kill) )
-    (message "-- %s" state) ))
-
-(defun demap--track-w-mode-val() "." demap-track-w-mode)
-(gv-define-simple-setter demap--track-w-mode-val demap--track-w-mode-set)
-(define-minor-mode demap-track-w-mode
-  "hoho"
   :group 'demap
-  :variable (demap--track-w-mode-val))
+  :init-func (progn
+               (setq demap-current-line-mode (make-overlay 0 0))
+               (add-hook 'demap-minimap-window-set-hook   #'demap--current-line-mode-activate-if nil t)
+               (add-hook 'demap-minimap-window-sleep-hook #'demap--current-line-mode-deactivate  nil t) )
 
+  :kill-func (progn
+               (demap--current-line-mode-deactivate)
+               (delete-overlay demap-current-line-mode)
+               (kill-local-variable 'demap-current-line-mode)
+               (remove-hook 'demap-minimap-window-set-hook   #'demap--current-line-mode-activate-if t)
+               (remove-hook 'demap-minimap-window-sleep-hook #'demap--current-line-mode-deactivate  t) ))
 
-;;;demap-current-line-mode-------
-
-;;demap current-line update
+;;current-line-mode update
 
 (defun demap--current-line-mode-update()
   ""
@@ -396,7 +367,7 @@ if the current window fails `demap-track-w-window-set'
   (with-current-buffer (demap-minimap-buffer minimap)
     (demap--current-line-mode-update) ))
 
-;;current-line activate
+;;current-line-mode activate
 
 (defun demap--current-line-mode-activate()
   ""
@@ -415,46 +386,22 @@ if the current window fails `demap-track-w-window-set'
       (demap--current-line-mode-activate)
     (demap--current-line-mode-deactivate) ))
 
-;;current-line mode
 
-(defun demap--current-line-mode-init()
+;;;test-area-mode-------
+
+(demap-define-minimap-miner-mode demap-test-area-mode
   ""
-  (setq demap-current-line-mode (make-overlay 0 0))
-  (demap-minimap-protect-variables t 'demap-current-line-mode)
-  (add-hook 'demap-minimap-window-set-hook   #'demap--current-line-mode-activate-if nil t)
-  (add-hook 'demap-minimap-window-sleep-hook #'demap--current-line-mode-deactivate  nil t)
-  (add-hook 'demap-minimap-kill-hook         #'demap--current-line-mode-kill        nil t) )
-
-(defun demap--current-line-mode-kill()
-  ""
-  (demap--current-line-mode-deactivate)
-  (delete-overlay demap-current-line-mode)
-  (kill-local-variable 'demap-current-line-mode)
-  (demap-minimap-unprotect-variables t 'demap-current-line-mode)
-  (remove-hook 'demap-minimap-window-set-hook   #'demap--current-line-mode-activate-if t)
-  (remove-hook 'demap-minimap-window-sleep-hook #'demap--current-line-mode-deactivate  t)
-  (remove-hook 'demap-minimap-kill-hook         #'demap--current-line-mode-kill        t) )
-
-(defun demap--current-line-mode-set(state)
-  ""
-  (when (xor state demap-current-line-mode)
-    (if state
-        (demap--current-line-mode-init)
-      (demap--current-line-mode-kill) )
-    (message "-- line - %s" state) ))
-
-(define-minor-mode demap-current-line-mode
-  "hoho"
   :group 'demap
-  :variable (demap-current-line-mode . demap--current-line-mode-set))
-
-(define-minor-mode demap-testf-mode
-  "hoho"
-  :global  t
-  :require 'demap
-  :group   'demap )
-
-;;;demap-test-area-mode-------
+  :init-func (progn
+               (setq demap-test-area-mode (make-overlay 0 0))
+               (add-hook 'demap-minimap-window-set-hook   #'demap--test-area-mode-activate-if nil t)
+               (add-hook 'demap-minimap-window-sleep-hook #'demap--test-area-mode-sleep       nil t) )
+  :kill-func (progn
+               (demap--test-area-mode-deactivate)
+               (delete-overlay demap-test-area-mode)
+               (kill-local-variable 'demap-test-area-mode)
+               (remove-hook 'demap-minimap-window-set-hook   #'demap--test-area-mode-activate-if t)
+               (remove-hook 'demap-minimap-window-sleep-hook #'demap--test-area-mode-sleep       t) ))
 
 ;;demap test-area update
 
@@ -516,40 +463,6 @@ if the current window fails `demap-track-w-window-set'
 (defun demap--test-area-mode-sleep()
   ""
   (overlay-put demap-test-area-mode 'face 'demap-visible-region-inactive-face) )
-
-;;test-area mode
-
-(defun demap--test-area-mode-init()
-  ""
-  (setq demap-test-area-mode (make-overlay 0 0))
-  (demap-minimap-protect-variables t 'demap-test-area-mode)
-  (add-hook 'demap-minimap-window-set-hook   #'demap--test-area-mode-activate-if nil t)
-  (add-hook 'demap-minimap-window-sleep-hook #'demap--test-area-mode-sleep       nil t)
-  (add-hook 'demap-minimap-kill-hook         #'demap--test-area-mode-kill        nil t) )
-
-(defun demap--test-area-mode-kill()
-  ""
-  (demap--test-area-mode-deactivate)
-  (delete-overlay demap-test-area-mode)
-  (kill-local-variable 'demap-test-area-mode)
-  (demap-minimap-unprotect-variables t 'demap-test-area-mode)
-  (remove-hook 'demap-minimap-window-set-hook   #'demap--test-area-mode-activate-if t)
-  (remove-hook 'demap-minimap-window-sleep-hook #'demap--test-area-mode-sleep       t)
-  (remove-hook 'demap-minimap-kill-hook         #'demap--test-area-mode-kill        t) )
-
-(defun demap--test-area-mode-set(state)
-  ""
-  (when (xor state demap-test-area-mode)
-    (if state
-        (demap--test-area-mode-init)
-      (demap--test-area-mode-kill) )
-    (message "-- area - %s" state) ))
-
-(define-minor-mode demap-test-area-mode
-  "hoho"
-  :group 'demap
-  :variable (demap-test-area-mode . demap--test-area-mode-set))
-
 
 
 (provide 'demap-track-w)
