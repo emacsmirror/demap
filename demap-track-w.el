@@ -345,10 +345,17 @@ if the current window fails `demap-track-w-window-set'
   ""
   (let ((window (demap-current-minimap-window)))
     (if (demap--visible-region-made-active-p)
-        (move-overlay demap-visible-region-mode
-                      (window-start window)
-                      (window-end window t)
-                      (current-buffer) )
+        (let ((ov-start (window-start window))
+              (ov-end   (window-end window t)) )
+          (move-overlay demap-visible-region-mode
+                        ov-start
+                        ov-end
+                        (current-buffer) )
+          (dolist (w (get-buffer-window-list (current-buffer) nil t))
+            (when (>= (window-start w) ov-start)
+              (set-window-point w ov-start) )
+            (when (<= (window-end w t) ov-end)
+              (set-window-point w ov-end) )))
       (demap--visible-region-mode-deactivate) )))
 
 (defun demap--visible-region-mode-update-has(minimap &rest i)
