@@ -124,42 +124,6 @@ Use the command `%s' to change this variable." ))
        (defvar-local ,var ,init-value
          ,(or doc (demap--define-mode-var-get-doc var nil nil nil nil)) ))))
 
-(defmacro demap--define-mode-hook(hook mode)
-  ""
-  `(progn
-     (defvar ,hook nil)
-     (unless (get ',hook 'variable-documentation)
-       (put ',hook 'variable-documentation
-            ,(format
-              "Hook run after entering or leaving `%s'.
-No problems result if this variable is not bound.
-`add-hook' automatically binds it.  (This is true for all hook variables.)"
-              mode )))))
-
-(defmacro demap--define-mode-keymap-var(var keymap doc)
-  ""
-  `(defvar ,var
-     (let ((km ,keymap))
-       (cond ((keymapp km) km)
-             ((listp   km) (easy-mmode-define-keymap km))
-             (t            (error "Invalid keymap %S" km)) ))
-     ,doc ))
-
-(defmacro demap--define-mode-tail(getter lighter keymap-sym keymapp)
-  ""
-  (let ((modevar (pcase getter
-                   (`(default-value ',v) v)
-                   (_ getter) )))
-    (if (symbolp modevar)
-        `(with-no-warnings
-           (add-minor-mode ',modevar ',lighter
-                           ,(if keymapp
-                                keymap-sym
-                              `(when (boundp ',keymap-sym)
-                                 ,keymap-sym ))))
-      (when (or lighter keymapp)
-        (error ":lighter and :keymap unsupported with mode expression %S" getter) ))))
-
 
 (defmacro demap-define-minimap-miner-mode(mode doc &rest body)
   "
@@ -172,19 +136,12 @@ No problems result if this variable is not bound.
         lighter
         keymap
         (construct-variable t);variable
-        (setter mode)
-        (getter mode)
+        (getter    mode)
+        (setter    `(setf ,mode))
         after-hook
-        (restr  '())
+        (restr     '())
 
-        (last-message-symbol (make-symbol "last-message"))
-        keymap-sym
-        hook
-        hook-on
-        hook-off
-
-        (mode-name (symbol-name mode))
-        (protect  '())
+        (protect   '())
         init-func
         kill-func
         set-func )
@@ -205,9 +162,15 @@ No problems result if this variable is not bound.
           (:init-value (setq init-value val))
           (:lighter    (setq lighter    (purecopy val)))
           (:keymap     (setq keymap     val))
-          (:variable   (setq construct-variable nil)
-                       (setq setter     val ;TODO: make this more acuret
-                             getter     val ))
+          (:variable   (let (tmp)
+                         (setq construct-variable nil)
+                         (if (and (setq tmp (cdr-safe val))
+                                  (or (symbolp tmp)
+                                      (functionp tmp) ))
+                             (setq getter (car val)
+                                   setter `(funcall #',tmp) )
+                           (setq getter val
+                                 setter `(setf ,val) ))))
           (:after-hook (setq after-hook val))
           ;;new
           (:protect    (if (symbolp val)
@@ -217,26 +180,16 @@ No problems result if this variable is not bound.
           (:kill-func  (setq kill-func  val))
           (:set-func   (setq set-func   val))
           ;;rest
-          (_           (setq restr (append (list val key) restr)) ))))
+          (_           (setq restr (append (list val key) restr))) )))
     ;set defalts
-    (setq keymap-sym (if (and keymap (symbolp keymap))
-                             keymap
-                       (intern (concat mode-name "-map")) )
-          hook     (intern (concat mode-name "-hook"    ))
-          hook-on  (intern (concat mode-name "-on-hook" ))
-          hook-off (intern (concat mode-name "-off-hook")) )
-    (setq init-func  (or init-func `(setf ,setter t  ))
-          kill-func  (or kill-func `(setf ,setter nil))
+    (setq init-func  (or init-func `(,@setter t  ))
+          kill-func  (or kill-func `(,@setter nil))
           set-func   (or set-func
-                         (let ((state-var (make-symbol "--state")))
+                         (let ((state-var (make-symbol "-state")))
                            `(lambda(,state-var)
                               (if ,state-var
-                                  ,(if (symbolp init-func)
-                                       `(,init-func)
-                                     init-func )
-                                ,(if (symbolp kill-func)
-                                     `(,kill-func)
-                                   kill-func ))))))
+                                  ,init-func
+                                ,kill-func )))))
     (when (and construct-variable (not globalp))
       (push mode protect) )
     ;;construct
@@ -244,58 +197,33 @@ No problems result if this variable is not bound.
        ;;variable
        ,@(when construct-variable
            `((demap--define-mode-var ,mode ,init-value
-                                    ,globalp ,(and body t) nil
-                                    ,@(nreverse restr) )))
-       ;;functions
-       (defun ,mode (&optional arg)
+                                     ,globalp ,(and body t) nil
+                                     ,@(nreverse restr) )))
+       (define-minor-mode ,mode
          ,doc
-	 (interactive (list (or current-prefix-arg 'toggle)))
-         (let ((,last-message-symbol (current-message)))
-           ;;set
-           (let ((state (if (eq arg 'toggle)
-                            (not ,getter)
-                          (> (prefix-numeric-value arg) 0) )))
-             (when (xor state ,getter)
-               ,(if (symbolp set-func)
-                    `(,set-func state)
-                  `(funcall ,set-func state) )
-                                        ;if varable did change
-               (when (not (xor state ,getter))
-                 (if state
-                     (progn
-                       (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                       (add-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) nil t) )
-                   (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                   (remove-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) t) ))))
-           ;;body
-           ,@body
-           ;;hooks
-           (run-hooks ',hook (if ,getter
-                                 ',hook-on
-                               ',hook-off ))
-           (when (called-interactively-p 'any)
-             ,(when (and globalp construct-variable)
-                `(customize-mark-as-set ',mode) )
-             ;; Avoid overwriting a message shown by the body,
-             ;; but do overwrite previous messages.
-             (unless (and (current-message)
-                          (not (equal ,last-message-symbol (current-message))) )
-               (message ,(concat "pretty-name"
-                                 " %sabled"
-                                 (unless globalp " in current buffer") )
-                        (if ,getter
-                            "en"
-                          "dis" ))))
-           ;;end
-           ,@(when after-hook (list after-hook))
-           (force-mode-line-update)
-           ,getter ))
-
-       :autoload-end
-       (demap--define-mode-hook ,hook ,mode)
-       ,@(unless (symbolp keymap)
-          `((demap--define-mode-keymap-var ,keymap-sym ,keymap ,(format "Keymap for `%s'." mode))))
-       (demap--define-mode-tail ,getter ,lighter ,keymap-sym ,keymap) )))
+         ,init-value
+         ,lighter
+         ,keymap
+         :global     ,globalp
+         :after-hook (,@(when (and globalp construct-variable)
+                          `((when (called-interactively-p 'any)
+                              (customize-mark-as-set ',mode) )))
+                      ,@after-hook)
+         :variable (,getter . (lambda(state)
+                                (when (xor state ,getter)
+                                  ,(if (symbolp set-func)
+                                       `(,set-func state)
+                                     `(funcall ,set-func state) )
+                                  ;;if varable did change
+                                  (when (not (xor state ,getter))
+                                    (if state
+                                        (progn
+                                          (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
+                                          (add-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) nil t) )
+                                      (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
+                                      (remove-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) t) )))))
+         ,@(nreverse restr)
+         ,@body ))))
 
 
 ;;;track-w-mode-------
