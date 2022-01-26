@@ -39,6 +39,12 @@
   :group 'demap
   :type 'string)
 
+(defcustom demap-minimap-construct-hook nil
+  "Normal hook ran after construct a demap-minimap.
+this hook is ran has the buffer used by the new minimap."
+  :group 'demap
+  :type  'hook )
+
 (defcustom demap-minimap-change-functions nil
   "Hook ran when changing a demap-minimap's buffer.
 when a demap-minimap needs to rebuild its buffer,
@@ -284,8 +290,12 @@ this is equivalent to
   "Construct a demap-minimap.
 NAME defalts to `demap-minimap-defalt-name'.
 SHOWING defalts to a blank buffer."
-  (let ((minimap (demap--minimap-construct)))
-    (demap--minimap-buffer-set minimap (demap--minimap-buffer-construct name showing))
+  (let ((minimap (demap--minimap-construct))
+        (buffer  (demap--minimap-buffer-construct name showing)) )
+    (demap--minimap-buffer-set minimap buffer)
+    (with-current-buffer buffer
+      (with-demoted-errors "error in demap-minimap-construct-hook: %s"
+        (run-hooks 'demap-minimap-construct-hook) ))
     minimap))
 
 ;;minimap window current
