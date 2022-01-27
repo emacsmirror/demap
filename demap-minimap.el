@@ -30,7 +30,9 @@
 ;;variables
 
 (defface demap-minimap-font-face
-  '((default :family "DejaVu Sans Mono" :height 30))
+  '((default
+      :family  "DejaVu Sans Mono"
+      :height  30))
   "Face used for demap-minimap buffers."
   :group 'demap)
 

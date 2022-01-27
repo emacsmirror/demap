@@ -28,6 +28,7 @@
 (require 'cl-lib)
 (require 'demap--tools)
 (require 'demap-minimap)
+(require 'hl-line)
 
 
 
@@ -38,31 +39,31 @@ and return nil if TRACK-W should not show the
 selected window. this function is called with
 TRACK-W's minimap's buffer has the current buffer."
   :type 'function
-  :group 'demap)
+  :group 'demap )
 
 (defface demap-current-line-face
-  '((((background dark)) (:background "gray50" :extend t))
-    (t (:background "gray50" :extend t)))
+  '((t (:inherit hl-line
+        :extend  t )))
   "Face used to highlight the current line in demap-minimap."
-  :group 'demap)
+  :group 'demap )
 
 (defface demap-current-line-inactive-face
-  '((((background dark)) (:background "gray77" :extend t))
-    (t (:background "gray77" :extend t)))
+  '((t (:inherit demap-current-line-face
+        :extend  t )))
   "Face used to highlight the current line in demap-minimap when not active."
-  :group 'demap)
+  :group 'demap )
 
 (defface demap-visible-region-face
-  '((((background dark)) (:background "gray10" :extend t))
-    (t (:background "gray10" :extend t)))
+  '((t (:inherit region
+        :extend  t )))
   "Face used to highlight visible region in demap-minimap."
-  :group 'demap)
+  :group 'demap )
 
 (defface demap-visible-region-inactive-face
-  '((((background dark)) (:background "gray16" :extend t))
-    (t (:background "gray16" :extend t)))
+  '((t (:inherit demap-visible-region-face
+        :extend  t )))
   "Face used to highlight visible region in demap-minimap when not active."
-  :group 'demap)
+  :group 'demap )
 
 ;;;define minimap miner mode-------
 
