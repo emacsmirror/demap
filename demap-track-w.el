@@ -221,9 +221,9 @@ Use the command `%s' to change this variable." ))
                                     (if state
                                         (progn
                                           (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                          (add-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) nil t) )
+                                          (add-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) nil t) )
                                       (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                      (remove-hook 'demap-minimap-kill-hook  (apply-partially ,mode 0) t) )))))
+                                      (remove-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) t) )))))
          ,@(nreverse restr)
          ,@body ))))
 
