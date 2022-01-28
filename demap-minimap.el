@@ -292,13 +292,16 @@ this is equivalent to
   "Construct a demap-minimap.
 NAME defalts to `demap-minimap-defalt-name'.
 SHOWING defalts to a blank buffer."
+  (interactive)
   (let ((minimap (demap--minimap-construct))
         (buffer  (demap--minimap-buffer-construct name showing)) )
     (demap--minimap-buffer-set minimap buffer)
     (with-current-buffer buffer
       (with-demoted-errors "error in demap-minimap-construct-hook: %s"
         (run-hooks 'demap-minimap-construct-hook) ))
-    minimap))
+    (when (called-interactively-p 'any)
+      (message "constructed demap minimap %s" minimap) )
+    minimap ))
 
 ;;minimap window current
 
