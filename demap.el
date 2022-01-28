@@ -30,11 +30,7 @@
   (x-focus-frame nil)
   (let ((window  (split-window-right))
         (minimap (demap-minimap-construct)) )
-    (set-window-buffer window (demap-minimap-buffer minimap))
-    (with-current-buffer (demap-minimap-buffer minimap)
-      (demap-test-mode)
-      (demap-test-area-mode)
-      (demap-test-line-mode) )))
+    (set-window-buffer window (demap-minimap-buffer minimap))))
 
 (provide 'demap)
 ;;; demap.el ends here
