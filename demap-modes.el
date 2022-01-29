@@ -1,4 +1,4 @@
-;;; demap-track-w.el --- Description -*- lexical-binding: t; -*-
+;;; demap-modes.el --- Description -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2022 Sawyer Gardner
 ;;
@@ -24,10 +24,9 @@
 ;;
 ;;; Code:
 
-
-(require 'cl-lib)
 (require 'demap--tools)
 (require 'demap-minimap)
+(require 'cl-lib)
 (require 'hl-line)
 
 
@@ -482,7 +481,7 @@ set face and remove hooks that update overlay."
   (overlay-put demap-visible-region-mode 'face 'demap-visible-region-inactive-face) )
 
 
-(provide 'demap-track-w)
+(provide 'demap-modes)
 (require 'demap)
 ;(provide 'demap)
-;;; demap-track-w.el ends here
+;;; demap-modes.el ends here

@@ -21,7 +21,7 @@
 
 
 (require 'demap-minimap)
-(require 'demap-track-w)
+(require 'demap-modes)
 
 
 ;;;###autoload
