@@ -70,42 +70,41 @@ Use the command `%s' to change this variable." ))
       (if globalp
           (concat (format doc-g1 mode-pretty-name mode-func)
                   (when funcp (format doc-g2 mode-func)) )
-        (format doc-local mode-pretty-name mode-func) )))
+        (format doc-local mode-pretty-name mode-func) ))))
 
-;;;###autoload
-  (defmacro demap--define-mode-var(var init-value &optional globalp funcp doc &rest args)
-    "Define a variable VAR the same way define-miner-mode would.
+(defmacro demap--define-mode-var(var init-value &optional globalp funcp doc &rest args)
+  "Define a variable VAR the same way define-miner-mode would.
 INIT-VALUE defalt value.
 GLOBALP    is wether the varable is global or local by defalt.
 FUNCP      is wether the variable should be set by a function.
 DOC        if not nil, override generated documentation.
 ARGS       arguments, see `define-miner-mode'."
-    (declare (doc-string 5))
-    (if globalp
-        (progn
-          ;;TODO: maybe remove this line
-          (setq args (demap--delete-redundant-keys :require args))
-          `(defcustom ,var ,init-value
-             ,(or doc (demap--define-mode-var-get-doc var t funcp nil nil))
-             ,@(unless (memq :group args)
-                 '(:group ',(intern (replace-regexp-in-string
-                                     "-mode\\'" "" (symbol-name var) ))))
-             ,@(unless (memq :set args)
-                 '(:set #'custom-set-minor-mode) )
-             ,@(unless (memq :initialize args)
-                 '(:initialize 'custom-initialize-default) )
-             ,@(unless (memq :type args)
-                 '(:type 'boolean) )
-             ,@args ))
-      `(progn
-         :autoload-end
-         (defvar-local ,var ,init-value
-           ,(or doc (demap--define-mode-var-get-doc var nil nil nil nil)) ))))
+  (declare (doc-string 5))
+  (if globalp
+      (progn
+        ;;TODO: maybe remove this line
+        (setq args (demap--delete-redundant-keys :require args))
+        `(defcustom ,var ,init-value
+           ,(or doc (demap--define-mode-var-get-doc var t funcp nil nil))
+           ,@(unless (memq :group args)
+               '(:group ',(intern (replace-regexp-in-string
+                                   "-mode\\'" "" (symbol-name var) ))))
+           ,@(unless (memq :set args)
+               '(:set #'custom-set-minor-mode) )
+           ,@(unless (memq :initialize args)
+               '(:initialize 'custom-initialize-default) )
+           ,@(unless (memq :type args)
+               '(:type 'boolean) )
+           ,@args ))
+    `(progn
+       :autoload-end
+       (defvar-local ,var ,init-value
+         ,(or doc (demap--define-mode-var-get-doc var nil nil nil nil)) ))))
 
 
 ;;;###autoload
-  (defmacro demap-define-minimap-miner-mode(mode doc &rest body)
-    "Define miner mode for demap minimap buffers.
+(defmacro demap-define-minimap-miner-mode(mode doc &rest body)
+  "Define miner mode for demap minimap buffers.
 expanded version of `define-minor-mode'.
 modes defined with this macro will only work in a
 demap minimap buffer.
@@ -146,103 +145,102 @@ the rest of the arguments are passed to
 `define-minor-mode'.
 
 \(fn MODE DOC &optional INIT-VALUE LIGHTER KEYMAP &rest BODY)"
-    (declare (doc-string 2)
-             (indent     1))
-    (let (globalp
-          init-value
-          lighter
-          keymap
-          (construct-variable t);variable
-          (getter    mode)
-          (setter    `(setf ,mode))
-          after-hook
-          (restr     '())
+  (declare (doc-string 2)
+           (indent     1))
+  (let (globalp
+        init-value
+        lighter
+        keymap
+        (construct-variable t);variable
+        (getter    mode)
+        (setter    `(setf ,mode))
+        after-hook
+        (restr     '())
 
-          (protect   '())
-          init-func
-          kill-func
-          set-func )
+        (protect   '())
+        init-func
+        kill-func
+        set-func )
                                         ;optional args
-      (and
-       (unless (keywordp (car body))
-         (setq init-value (pop body)) )
-       (unless (keywordp (car body))
-         (setq lighter    (pop body)) )
-       (unless (keywordp (car body))
-         (setq keymap     (pop body)) ))
+    (and
+     (unless (keywordp (car body))
+       (setq init-value (pop body)) )
+     (unless (keywordp (car body))
+       (setq lighter    (pop body)) )
+     (unless (keywordp (car body))
+       (setq keymap     (pop body)) ))
                                         ;process keys
-      (while (keywordp (car body))
-        (let ((key (pop body))
-              (val (pop body)) )
-          (pcase key
-            (:global     (setq globalp    val))
-            (:init-value (setq init-value val))
-            (:lighter    (setq lighter    (purecopy val)))
-            (:keymap     (setq keymap     val))
-            (:variable   (let (tmp)
-                           (setq construct-variable nil)
-                           (if (and (setq tmp (cdr-safe val))
-                                    (or (symbolp tmp)
-                                        (functionp tmp) ))
-                               (setq getter (car val)
-                                     setter `(funcall #',tmp) )
-                             (setq getter val
-                                   setter `(setf ,val) ))))
-            (:after-hook (setq after-hook val))
-            ;;new
-            (:protect    (if (symbolp val)
-                             (push val protect)
-                           (setq protect (append val protect)) ))
-            (:init-func  (setq init-func  val))
-            (:kill-func  (setq kill-func  val))
-            (:set-func   (setq set-func   val))
-            ;;rest
-            (_           (setq restr (append (list val key) restr))) )))
+    (while (keywordp (car body))
+      (let ((key (pop body))
+            (val (pop body)) )
+        (pcase key
+          (:global     (setq globalp    val))
+          (:init-value (setq init-value val))
+          (:lighter    (setq lighter    (purecopy val)))
+          (:keymap     (setq keymap     val))
+          (:variable   (let (tmp)
+                         (setq construct-variable nil)
+                         (if (and (setq tmp (cdr-safe val))
+                                  (or (symbolp tmp)
+                                      (functionp tmp) ))
+                             (setq getter (car val)
+                                   setter `(funcall #',tmp) )
+                           (setq getter val
+                                 setter `(setf ,val) ))))
+          (:after-hook (setq after-hook val))
+          ;;new
+          (:protect    (if (symbolp val)
+                           (push val protect)
+                         (setq protect (append val protect)) ))
+          (:init-func  (setq init-func  val))
+          (:kill-func  (setq kill-func  val))
+          (:set-func   (setq set-func   val))
+          ;;rest
+          (_           (setq restr (append (list val key) restr))) )))
                                         ;set defalts
-      (setq init-func  (or init-func `(,@setter t  ))
-            kill-func  (or kill-func `(,@setter nil))
-            set-func   (or set-func
-                           (let ((state-var (make-symbol "-state")))
-                             `(lambda(,state-var)
-                                (if ,state-var
-                                    ,init-func
-                                  ,kill-func )))))
-      (when (and construct-variable (not globalp))
-        (push mode protect) )
-      ;;construct
-      `(progn
-         ;;variable
-         ,@(when construct-variable
-             `((demap--define-mode-var ,mode ,init-value
-                                       ,globalp ,(and body t) nil
-                                       ,@(nreverse restr) )))
-         (define-minor-mode ,mode
-           ,doc
-           ,init-value
-           ,lighter
-           ,keymap
-           :global     ,globalp
-           :after-hook (,@(when (and globalp construct-variable)
-                            `((when (called-interactively-p 'any)
-                                (customize-mark-as-set ',mode) )))
-                        ,@after-hook)
-           :variable (,getter . (lambda(state)
-                                  (cl-assert (demap-buffer-minimap) nil "%s can only be used in a demap-minimap buffer" ',mode)
-                                  (when (xor state ,getter)
-                                    ,(if (symbolp set-func)
-                                         `(,set-func state)
-                                       `(funcall ,set-func state) )
-                                    ;;if varable did change
-                                    (when (not (xor state ,getter))
-                                      (if state
-                                          (progn
-                                            (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                            (add-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) nil t) )
-                                        (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                        (remove-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) t) )))))
-           ,@(nreverse restr)
-           ,@body ))))
-)
+    (setq init-func  (or init-func `(,@setter t  ))
+          kill-func  (or kill-func `(,@setter nil))
+          set-func   (or set-func
+                         (let ((state-var (make-symbol "-state")))
+                           `(lambda(,state-var)
+                              (if ,state-var
+                                  ,init-func
+                                ,kill-func )))))
+    (when (and construct-variable (not globalp))
+      (push mode protect) )
+    ;;construct
+    `(progn
+       ;;variable
+       ,@(when construct-variable
+           `((demap--define-mode-var ,mode ,init-value
+                                     ,globalp ,(and body t) nil
+                                     ,@(nreverse restr) )))
+       (define-minor-mode ,mode
+         ,doc
+         ,init-value
+         ,lighter
+         ,keymap
+         :global     ,globalp
+         :after-hook (,@(when (and globalp construct-variable)
+                          `((when (called-interactively-p 'any)
+                              (customize-mark-as-set ',mode) )))
+                      ,@after-hook)
+         :variable (,getter . (lambda(state)
+                                (cl-assert (demap-buffer-minimap) nil "%s can only be used in a demap-minimap buffer" ',mode)
+                                (when (xor state ,getter)
+                                  ,(if (symbolp set-func)
+                                       `(,set-func state)
+                                     `(funcall ,set-func state) )
+                                  ;;if varable did change
+                                  (when (not (xor state ,getter))
+                                    (if state
+                                        (progn
+                                          (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
+                                          (add-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) nil t) )
+                                      (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
+                                      (remove-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) t) )))))
+         ,@(nreverse restr)
+         ,@body ))))
 
 ;;;track-w-mode-------
 
