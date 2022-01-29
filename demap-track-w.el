@@ -252,6 +252,7 @@ selected window."
   :type 'function
   :group 'demap )
 
+;;;###autoload
 (demap-define-minimap-miner-mode demap-track-w-mode
   "Minimap miner mode to make minimap show the active window.
 makes the minimap this is active in show the buffer
@@ -307,6 +308,7 @@ window then tell it to sleep."
   "Face used to highlight the current line in demap-minimap when not active."
   :group 'demap )
 
+;;;###autoload
 (demap-define-minimap-miner-mode demap-current-line-mode
   "Minimap miner mode to highlight the current line.
 this will use `demap-current-line-face' to
@@ -382,6 +384,7 @@ this mode can only be used in a demap minimap buffer."
   "Face used to highlight the visible region in demap-minimap when not active."
   :group 'demap )
 
+;;;###autoload
 (demap-define-minimap-miner-mode demap-visible-region-mode
   "minimap miner mode to show the visible region in minimaps window.
 this highlights the area in the minimap visible
