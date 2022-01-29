@@ -380,5 +380,6 @@ this is the same has
 
 
 (provide 'demap-minimap)
+(require 'demap)
 ;(provide 'demap)
 ;;; demap-minimap.el ends here

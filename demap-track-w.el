@@ -485,5 +485,6 @@ set face and remove hooks that update overlay."
 
 
 (provide 'demap-track-w)
+(require 'demap)
 ;(provide 'demap)
 ;;; demap-track-w.el ends here
