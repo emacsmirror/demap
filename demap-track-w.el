@@ -72,6 +72,7 @@ Use the command `%s' to change this variable." ))
                   (when funcp (format doc-g2 mode-func)) )
         (format doc-local mode-pretty-name mode-func) )))
 
+;;;###autoload
   (defmacro demap--define-mode-var(var init-value &optional globalp funcp doc &rest args)
     "Define a variable VAR the same way define-miner-mode would.
 INIT-VALUE defalt value.
@@ -102,6 +103,7 @@ ARGS       arguments, see `define-miner-mode'."
            ,(or doc (demap--define-mode-var-get-doc var nil nil nil nil)) ))))
 
 
+;;;###autoload
   (defmacro demap-define-minimap-miner-mode(mode doc &rest body)
     "Define miner mode for demap minimap buffers.
 expanded version of `define-minor-mode'.
