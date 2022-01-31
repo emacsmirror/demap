@@ -6,8 +6,9 @@ OUT_FILE_NAME = demap-$(VERSION)
 OUT_FILE      = $(BUILD_DIR)/$(OUT_FILE_NAME).tar
 
 
-$(OUT-FILE): $(FILES)
+$(OUT_FILE): $(FILES)
 	mkdir -p $(BUILD_DIR)
-	tar -cf $(OUT-FILE)                  \
+	tar -cf $(OUT_FILE)                  \
     --transform='s,^,$(OUT_FILE_NAME)/,' \
     ${FILES}
+
