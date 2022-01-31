@@ -43,7 +43,8 @@ BUFFER-OR-NAME's new name is undefined."
   "Return base buffer of BUFFER.
 if Buffer is not an indirect buffer, return BUFFER.
 see `buffer-base-buffer'."
-  (or (buffer-base-buffer buffer) buffer))
+  (or (buffer-base-buffer buffer)
+      buffer ))
 
 ;;varables
 
@@ -91,13 +92,14 @@ see `dolist'.
 
 \(fn (VAR LIST [RESULT]) BODY...)"
   (declare (indent 1))
-  (let ((tempvar (make-symbol "tempvar")))
-    `(let ((,tempvar ,(nth 1 spec)))
-       (if (demap--tools-list-p ,tempvar)
-           (dolist (,(nth 0 spec) ,tempvar ,(nth 2 spec))
-             ,@body )
-         (dolist (,(nth 0 spec) (list ,tempvar) ,(nth 2 spec))
-           ,@body )))))
+  (let ((list-var (make-symbol "list-var")))
+    `(let ((,list-var ,(nth 1 spec)))
+       (dolist (,(nth 0 spec)
+                (if (demap--tools-list-p ,list-var)
+                    ,list-var
+                  (list ,list-var) )
+                ,(nth 2 spec) )
+         ,@body ))))
 
 (defmacro demap--tools-dolists-unsafe(specs &rest body)
   "Loop over all SPECS without type checking.

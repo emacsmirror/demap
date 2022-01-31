@@ -9,7 +9,7 @@
 ;; Version: 1.0.0
 ;; Keywords: convenience extensions lisp
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "24.3") (dash "2.18.0"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -26,6 +26,7 @@
 
 (require 'demap--tools)
 (require 'demap-minimap)
+(require 'dash)
 (require 'cl-lib)
 (require 'hl-line)
 
@@ -86,8 +87,9 @@ ARGS       arguments, see `define-miner-mode'."
         `(defcustom ,var ,init-value
            ,(or doc (demap--define-mode-var-get-doc var t funcp nil nil))
            ,@(unless (memq :group args)
-               '(:group ',(intern (replace-regexp-in-string
-                                   "-mode\\'" "" (symbol-name var) ))))
+               '(:group ',(->> (symbol-name var)
+                               (replace-regexp-in-string "-mode\\'" "")
+                               (intern) )))
            ,@(unless (memq :set args)
                '(:set #'custom-set-minor-mode) )
            ,@(unless (memq :initialize args)
@@ -160,7 +162,7 @@ the rest of the arguments are passed to
         init-func
         kill-func
         set-func )
-                                        ;optional args
+    ;;optional args
     (and
      (unless (keywordp (car body))
        (setq init-value (pop body)) )
@@ -168,14 +170,14 @@ the rest of the arguments are passed to
        (setq lighter    (pop body)) )
      (unless (keywordp (car body))
        (setq keymap     (pop body)) ))
-                                        ;process keys
+    ;;process keys
     (while (keywordp (car body))
       (let ((key (pop body))
             (val (pop body)) )
         (pcase key
           (:global     (setq globalp    val))
           (:init-value (setq init-value val))
-          (:lighter    (setq lighter    (purecopy val)))
+          (:lighter    (setq lighter    val))
           (:keymap     (setq keymap     val))
           (:variable   (let (tmp)
                          (setq construct-variable nil)
@@ -196,7 +198,7 @@ the rest of the arguments are passed to
           (:set-func   (setq set-func   val))
           ;;rest
           (_           (setq restr (append (list val key) restr))) )))
-                                        ;set defalts
+    ;;set defalts
     (setq init-func  (or init-func `(,@setter t  ))
           kill-func  (or kill-func `(,@setter nil))
           set-func   (or set-func
@@ -214,6 +216,7 @@ the rest of the arguments are passed to
            `((demap--define-mode-var ,mode ,init-value
                                      ,globalp ,(and body t) nil
                                      ,@(nreverse restr) )))
+       ;;function
        (define-minor-mode ,mode
          ,doc
          ,init-value
@@ -279,9 +282,11 @@ this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
                (setf demap-track-w-mode t)
-               (add-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap))) )
+               (->> (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap))
+                    (add-hook 'window-state-change-hook) ))
   :kill-func (progn
-               (remove-hook 'window-state-change-hook (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap)))
+               (->> (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap))
+                    (remove-hook 'window-state-change-hook) )
                (kill-local-variable 'demap-track-w-mode) ) )
 
 ;;track-w-mode update
@@ -370,13 +375,15 @@ this mode can only be used in a demap minimap buffer."
 (defun demap--current-line-mode-activate()
   "Wake up demap-current-line-mode."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-face)
-  (add-hook 'post-command-hook (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap)))
+  (->> (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap))
+       (add-hook 'post-command-hook) )
   (demap--current-line-mode-update) )
 
 (defun demap--current-line-mode-deactivate()
   "Set demap-current-line-mode to sleep."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-inactive-face)
-  (remove-hook 'post-command-hook (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap))) )
+  (->> (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap))
+       (remove-hook 'post-command-hook) ))
 
 (defun demap--current-line-mode-activate-if()
   "Set wether demap-current-line-mode should sleep when minimap is not blank."
@@ -429,25 +436,25 @@ returns true if the current minimap is showing the active window."
   (let ((window  (demap-current-minimap-window))
         (showing (demap-minimap-showing (demap-buffer-minimap))) )
     (and (window-live-p window)
-         (eq (demap--tools-real-buffer (window-buffer window)) showing) )))
+         (eq showing (demap--tools-real-buffer (window-buffer window))) )))
 
 (defun demap--visible-region-mode-update()
   "Update the position of demap-visible-region-mode's overlay.
 minimap will scroll if overlay goes off screen."
-  (let ((window (demap-current-minimap-window)))
-    (if (demap--visible-region-made-active-p)
-        (let ((ov-start (window-start window))
-              (ov-end   (window-end window t)) )
-          (move-overlay demap-visible-region-mode
-                        ov-start
-                        ov-end
-                        (current-buffer) )
-          (dolist (w (get-buffer-window-list (current-buffer) nil t))
-            (when (>= (window-start w) ov-start)
-              (set-window-point w ov-start) )
-            (when (<= (window-end w t) ov-end)
-              (set-window-point w ov-end) )))
-      (demap--visible-region-mode-deactivate) )))
+  (if (demap--visible-region-made-active-p)
+      (let* ((window (demap-current-minimap-window))
+             (ov-start (window-start window))
+             (ov-end   (window-end window t)) )
+        (move-overlay demap-visible-region-mode
+                      ov-start
+                      ov-end
+                      (current-buffer) )
+        (dolist (w (get-buffer-window-list (current-buffer) nil t))
+          (when (>= (window-start w) ov-start)
+            (set-window-point w ov-start) )
+          (when (<= (window-end w t) ov-end)
+            (set-window-point w ov-end) )))
+    (demap--visible-region-mode-deactivate) ))
 
 (defun demap--visible-region-mode-update-has(minimap &rest i)
   "Update the position of demap-visible-region-mode's overlay in MINIMAP.
@@ -471,20 +478,20 @@ I is ignored for function hooks."
   "Wake up demap-visible-region-mode.
 set face and add hooks to update overlay."
   (overlay-put demap-visible-region-mode 'face 'demap-visible-region-face)
-  (let ((scrl-func (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap)))
-        (size-func (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))) )
-    (add-hook 'window-scroll-functions      scrl-func)
-    (add-hook 'window-size-change-functions size-func) )
+  (->> (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap))
+       (add-hook 'window-scroll-functions) )
+  (->> (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))
+       (add-hook 'window-size-change-functions) )
   (demap--visible-region-mode-update) )
 
 (defun demap--visible-region-mode-deactivate()
   "Put demap-visible-region-mode to sleep.
 set face and remove hooks that update overlay."
   (overlay-put demap-visible-region-mode 'face 'demap-visible-region-inactive-face)
-  (let ((scrl-func (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap)))
-        (size-func (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))) )
-    (remove-hook 'window-scroll-functions      scrl-func)
-    (remove-hook 'window-size-change-functions size-func) ))
+  (->> (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap))
+       (remove-hook 'window-scroll-functions) )
+  (->> (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))
+       (remove-hook 'window-size-change-functions) ))
 
 (defun demap--visible-region-mode-activate-if()
   "Set wether demap-visible-region-mode should sleep when minimap is not blank."
