@@ -235,9 +235,25 @@ the rest of the arguments are passed to
                                     (if state
                                         (progn
                                           (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                          (add-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) nil t) )
+                                          (add-hook 'demap-minimap-kill-hook
+                                                    (lambda()
+                                                      (,mode 0) )
+                                                    nil t )
+                                          (add-hook 'demap-minimap-change-major-mode-hook
+                                                    (lambda()
+                                                      (unless (get ',mode 'permanent-local)
+                                                        (,mode 0) ))
+                                                    nil t ))
                                       (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                      (remove-hook 'demap-minimap-kill-hook  (apply-partially #',mode 0) t) )))))
+                                      (remove-hook 'demap-minimap-kill-hook
+                                                   (lambda()
+                                                     (,mode 0) )
+                                                   t )
+                                      (remove-hook 'demap-minimap-change-major-mode-hook
+                                                   (lambda()
+                                                     (unless (get ',mode 'permanent-local)
+                                                       (,mode 0) ))
+                                                   t ))))))
          ,@(nreverse restr)
          ,@body ))))
 

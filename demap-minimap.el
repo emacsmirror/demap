@@ -47,6 +47,7 @@ this hook is ran has the buffer used by the new minimap."
   :group 'demap
   :type  'hook )
 
+(put 'demap-minimap-change-functions 'permanent-local t)
 (defcustom demap-minimap-change-functions nil
   "Hook ran when changing a demap-minimap's buffer.
 when a demap-minimap needs to rebuild its buffer,
@@ -57,6 +58,7 @@ the functions in this hook should take one argument
   :group 'demap
   :type  'hook )
 
+(put 'demap-minimap-kill-hook 'permanent-local t)
 (defcustom demap-minimap-kill-hook nil
   "Normal hook ran when killing a demap-minimap.
 note that demap-minimap sometimes needs to rebuild
@@ -65,6 +67,13 @@ gets called but not this hook."
   :group 'demap
   :type  'hook )
 
+(put 'demap-minimap-change-major-mode-hook 'permanent-local t)
+(defcustom demap-minimap-change-major-mode-hook nil
+  ""
+  :group 'demap
+  :type  'hook )
+
+(put 'demap-minimap-window-set-hook 'permanent-local t)
 (defcustom demap-minimap-window-set-hook nil
   "Normal hook ran when demap-minimap sets the window it is showing.
 the window demap-minimap is set to show can be got
@@ -72,6 +81,7 @@ from `demap-current-minimap-window'."
   :group 'demap
   :type  'hook )
 
+(put 'demap-minimap-window-sleep-hook 'permanent-local t)
 (defcustom demap-minimap-window-sleep-hook nil
   "Normal hook ran when demap-minimap rests.
 this is called when the window demap-minimap is
@@ -79,6 +89,7 @@ showing is no longer active."
   :group 'demap
   :type  'hook )
 
+(put 'demap-minimap-protected-variables 'permanent-local t)
 (defcustom demap-minimap-protected-variables nil
   "List of variables copy when demap-minimap rebuilds its buffer.
 the buffer-local values of these variables are copied from the old buffer to the
@@ -89,10 +100,12 @@ and remove variables from this list."
   :type  '(repeat variable) )
 
 
+(put 'demap--current-minimap 'permanent-local t)
 (defvar-local demap--current-minimap nil
   "The minimap associated with this buffer.
 see `demap-buffer-minimap'.")
 
+(put 'demap--minimap-window 'permanent-local t)
 (defvar-local demap--minimap-window nil
   "the window that the current minimap is showing.
 see `demap-current-minimap-window'.")
@@ -136,7 +149,8 @@ few hardcoded ones."
                    'demap-minimap-window-set-hook
                    'demap-minimap-window-sleep-hook
                    'demap-minimap-protected-variables
-                   'demap--minimap-window ))
+                   'demap--minimap-window
+                   'demap-minimap-change-major-mode-hook ))
     (demap--tools-copy-local-variable v nil new-buffer) )
   (demap--tools-dolist-hook (v 'demap-minimap-protected-variables)
     (demap--tools-copy-local-variable v nil new-buffer) ))
@@ -218,9 +232,13 @@ the new buffer will be returned but not assigned to MINIMAP."
     (demap--tools-window-replace-buffer old-buffer new-buffer)
     new-buffer ))
 
+(defun demap--minimap-change-major-mode-hook-run()
+  "Run hook `demap-minimap-change-major-mode-hook'."
+  (run-hooks 'demap-minimap-change-major-mode-hook ))
+
 (defun demap--minimap-kill-hook-run()
   "Run hook `demap-minimap-kill-hook'."
-  (run-hooks 'demap-minimap-kill-hook))
+  (run-hooks 'demap-minimap-kill-hook ))
 
 (defun demap--minimap-buffer-set(minimap new-buffer)
   "Set the buffer used by MINIMAP to NEW-BUFFER.
@@ -230,6 +248,7 @@ is killed."
     (setf (demap-minimap-buffer minimap) new-buffer)
     (with-current-buffer new-buffer
       (setq-local demap--current-minimap minimap)
+      (add-hook 'change-major-mode-hook #'demap--minimap-change-major-mode-hook-run nil t)
       (add-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run nil t) )
     (when old-buffer
       (with-current-buffer old-buffer
