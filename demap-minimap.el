@@ -131,6 +131,10 @@ current buffer's minimap."
     (or (demap-buffer-minimap minimap-or-name)
         (error "No such demap-minimap: %s" minimap-or-name) )))
 
+(defun demap-normalize-minimap-buffer(minimap-or-name)
+  ""
+  (demap-minimap-buffer (demap-normalize-minimap minimap-or-name)) )
+
 (defun demap-minimap-live-p(minimap)
   "Return t if MINIMAP is a demap-minimap which has not been killed.
 Value is nil if MINIMAP is not a demap-minimap or if it has been killed."
