@@ -48,6 +48,19 @@ see `buffer-base-buffer'."
 
 ;;varables
 
+(defun demap--tools-delete-redundant-keys(key seq)
+  "Remove KEY and its value from SEQ, skipping the last one."
+  (let ((spot     seq)
+        (old-spot nil) )
+    (while spot
+      (when (eq (car spot) key)
+        (when old-spot
+          (setf (car old-spot) (nth    2 old-spot)
+                (cdr old-spot) (nthcdr 3 old-spot) ))
+        (setq old-spot spot) )
+      (setq spot (nthcdr 2 spot)) ))
+  seq )
+
 (defun demap--tools-copy-local-variable(variable from-buffer to-buffer)
   "Copy the buffer-local value of VARIABLE in FROM-BUFFER to TO-BUFFER.
 if VARABLE is not buffer local in FROM-BUFFER, then
