@@ -131,10 +131,10 @@ WIDTH is the width of the window, should be an
         to 20)."
   (setq side  (or side 'right)
         width (or width 20) )
-  (--> #'demap-minimap-buffer-display-condition
+  (--> `,#'demap-minimap-buffer-display-condition
        (assq-delete-all it display-buffer-alist)
        (setq display-buffer-alist it))
-  (push `(#'demap-minimap-buffer-display-condition
+  (push `(,#'demap-minimap-buffer-display-condition
           (display-buffer-in-side-window)
           (side         . ,side)
           (window-width . ,width) )
