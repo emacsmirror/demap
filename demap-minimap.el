@@ -416,6 +416,6 @@ this is the same has
 
 
 (provide 'demap-minimap)
-(require 'demap)
+(demap--tools-define-partof-demap)
 ;(provide 'demap)
 ;;; demap-minimap.el ends here

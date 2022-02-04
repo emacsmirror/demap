@@ -494,6 +494,6 @@ set face and remove hooks that update overlay."
 
 
 (provide 'demap-modes)
-(require 'demap)
+(demap--tools-define-partof-demap)
 ;(provide 'demap)
 ;;; demap-modes.el ends here

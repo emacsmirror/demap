@@ -24,6 +24,22 @@
     ;window.el doesn't provide 'window before version 28
     (require 'window) ))
 
+;;define
+
+(defvar demap--tools-demap-defined-start-p nil
+  "")
+
+(defun demap--tools-define-demap-start()
+  ""
+  (setq demap--tools-demap-defined-start-p t) )
+
+(defun demap--tools-define-partof-demap()
+  ""
+  (unless demap--tools-demap-defined-start-p
+    (require 'demap) ))
+
+(message "demap--tools test")
+
 ;;buffer
 
 (defun demap--tools-window-replace-buffer(buffer-or-name new-buffer-or-name)

@@ -19,12 +19,14 @@
 ;;
 ;;; Code:
 
-
+(require 'demap--tools)
+(demap--tools-define-demap-start)
 (require 'demap-minimap)
 (require 'demap-modes)
 (require 'dash)
 (require 'cl-lib)
 
+(message "-demap.el test")
 
 ;;;###autoload
 (defun demap-minimap-open(&optional minimap-or-name frame)
