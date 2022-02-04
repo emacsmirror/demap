@@ -27,14 +27,16 @@
 ;;define
 
 (defvar demap--tools-demap-defined-start-p nil
-  "")
+  "Wether demap.el has started loading.")
 
 (defun demap--tools-define-demap-start()
-  ""
+  "Mark that demap.el has started loading."
   (setq demap--tools-demap-defined-start-p t) )
 
 (defun demap--tools-define-partof-demap()
-  ""
+  "Define this file has part of demap.
+load demap.el if it hasn't start loading yet. meant
+to be put at the end of files."
   (unless demap--tools-demap-defined-start-p
     (require 'demap) ))
 
