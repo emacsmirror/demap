@@ -38,8 +38,6 @@
   (unless demap--tools-demap-defined-start-p
     (require 'demap) ))
 
-(message "demap--tools test")
-
 ;;buffer
 
 (defun demap--tools-window-replace-buffer(buffer-or-name new-buffer-or-name)

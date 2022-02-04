@@ -26,8 +26,6 @@
 (require 'dash)
 (require 'cl-lib)
 
-(message "-demap.el test")
-
 ;;;###autoload
 (defun demap-minimap-open(&optional minimap-or-name frame)
   "Open minimap in a side window.
