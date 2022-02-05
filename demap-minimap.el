@@ -68,7 +68,7 @@
   :group 'demap
   :type 'string)
 
-(defcustom demap-minimap-construct-hook '(demap-track-w-mode demap-current-line-mode demap-visible-region-mode)
+(defcustom demap-minimap-construct-hook '(demap-track-window-mode demap-current-line-mode demap-visible-region-mode)
   "Normal hook ran after construct a demap-minimap.
 this hook is ran has the buffer used by the new minimap."
   :group 'demap

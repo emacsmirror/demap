@@ -16,15 +16,16 @@
 ;;
 ;; Addon for demap.el that adds modes meant to run in demap-minimap buffers.
 ;; minimap modes (defined with `demap-define-minimap-miner-mode') are modes that
-;; can only be activated in a minimap. the minimap mode `demap-track-w-mode'
+;; can only be activated in a minimap. the minimap mode `demap-track-window-mode'
 ;; updates the window that the minimap is showing while
 ;; `demap-current-line-mode' and `demap-visible-region-mode' display information
-;; on the shown window. if you wish to make a minimap mode, use these as examples.
+;; on the shown window. if you wish to make a minimap mode, use these as
+;; examples.
 ;;
 ;; code layout:
 ;;      define-minimap-miner-mode       ; helper macro for making modes for minimaps
-;;      track-w-mode                    ; minimap mode to fallow the active window
-;;              update                  ; update track-w-mode
+;;      track-window-mode               ; minimap mode to fallow the active window
+;;              update                  ; update track-window-mode
 ;;      current-line-mode               ; minimap mode to highlight the current line
 ;;              update                  ; update current-line-mode's overlay
 ;;              wake                    ; wake up current-line-mode
@@ -259,9 +260,9 @@ the rest of the arguments are passed to
          ,@(nreverse restr)
          ,@body ))))
 
-;;;track-w-mode
+;;;track-window-mode
 
-(defcustom demap-track-w-mode-update-p-func #'demap-track-w-mode-update-p-func-defalt
+(defcustom demap-track-window-mode-update-p-func #'demap-track-window-mode-update-p-func-defalt
   "Function to determin if demap-minimap should show the selected window.
 the function should accept no arguments. it should
 return nil if the current minimap should not show the
@@ -270,53 +271,53 @@ selected window."
   :group 'demap )
 
 ;;;###autoload
-(demap-define-minimap-miner-mode demap-track-w-mode
+(demap-define-minimap-miner-mode demap-track-window-mode
   "Minimap miner mode to make minimap show the active window.
 makes the minimap this is active in show the buffer
 in the currently active window. will not show the
-window if `demap-track-w-mode-update-p-func'
+window if `demap-track-window-mode-update-p-func'
 returns nil.
 
 this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
-               (setf demap-track-w-mode t)
-               (->> (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap))
+               (setf demap-track-window-mode t)
+               (->> (apply-partially #'demap-track-window-mode-update-as (demap-buffer-minimap))
                     (add-hook 'window-state-change-hook) ))
   :kill-func (progn
-               (->> (apply-partially #'demap-track-w-mode-update-as (demap-buffer-minimap))
+               (->> (apply-partially #'demap-track-window-mode-update-as (demap-buffer-minimap))
                     (remove-hook 'window-state-change-hook) )
-               (kill-local-variable 'demap-track-w-mode) ) )
+               (kill-local-variable 'demap-track-window-mode) ) )
 
-;;track-w-mode update
+;;track-window-mode update
 
-(defun demap-track-w-mode-update-p-func-defalt()
+(defun demap-track-window-mode-update-p-func-defalt()
   "Determin if track-w mode can fallow the active window.
-defalt value for `demap-track-w-mode-update-p-func'.
+defalt value for `demap-track-window-mode-update-p-func'.
 returns nil if the active window's buffer is not a
 file buffer."
   (buffer-file-name (window-buffer)) )
 
-(defun demap-track-w-mode-update-p-func-any()
+(defun demap-track-window-mode-update-p-func-any()
   "Determin if track-w mode can fallow the active window.
-meant to be a value for `demap-track-w-mode-update-p-func'.
+meant to be a value for `demap-track-window-mode-update-p-func'.
 returns true for nearly any window, ignoring other minimaps"
   (not (demap-buffer-minimap)) )
 
-(defun demap--track-w-mode-update()
+(defun demap--track-window-mode-update()
   "Update the window the current minimap is showing.
 if the current minimap should not be showing the
 active window then tell minimap to sleep."
-  (if (funcall demap-track-w-mode-update-p-func)
+  (if (funcall demap-track-window-mode-update-p-func)
       (setf (demap-current-minimap-window) (selected-window))
     (demap-current-minimap-window-sleep) ))
 
-(defun demap-track-w-mode-update-as(minimap)
+(defun demap-track-window-mode-update-as(minimap)
   "Update the window that MINIMAP is showing.
 if the MINIMAP should not be showing the active
 window then tell it to sleep."
   (with-current-buffer (demap-minimap-buffer minimap)
-    (demap--track-w-mode-update) ))
+    (demap--track-window-mode-update) ))
 
 
 ;;;current-line-mode
