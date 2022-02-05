@@ -2,11 +2,11 @@
 ;;
 ;; Copyright (C) 2022 Sawyer Gardner
 ;;
-;; Author: Sawyer Gardner <https://github.com/sawyer>
+;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: January 03, 2022
 ;; Modified: February 04, 2022
 ;; Version: 1.0.0
-;; Keywords: lisp
+;; Keywords: lisp convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.3") (dash "2.18.0"))
 ;;
@@ -16,13 +16,13 @@
 ;;
 ;; this file contains the core of demap.el's implamentation. this includes the
 ;; definitions for the minimap object, buffer, custom variables, faces, and hooks.
-;; wile thare is little here ment for the 'user' to care about outside of the
+;; wile there is little here meant for the 'user' to care about outside of the
 ;; faces custom varable. custom modes or external packages can use the functions
-;; defined here to change or add feateres to minimaps.
+;; defined here to change or add features to minimaps.
 ;;
 ;; demap minimaps are objects constructed from `demap-minimap-construct'. these objects
-;; are asoshiated with a buffer (abtained with `demap-minimap-buffer') often
-;; refered to has a minimap-buffer. minimaps also have a buffer it is showing
+;; are associated with a buffer (obtained with `demap-minimap-buffer') often
+;; referred to has a minimap-buffer. minimaps also have a buffer it is showing
 ;; (obtained or set with `demap-minimap-showing'). while not required,
 ;; `demap-minimap-window' can set a minimap to show the buffer in a window, and
 ;; pass the window to `demap-minimap-window-set-hook'.
