@@ -1,13 +1,12 @@
-;;; demap-modes.el --- Description -*- lexical-binding: t; -*-
+;;; demap-modes.el --- modes for demap minimaps -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2022 Sawyer Gardner
 ;;
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
-;; Maintainer: Sawyer Gardner <sawyerjgardner@gmail.com>
 ;; Created: January 04, 2022
-;; Modified: January 05, 2022
+;; Modified: February 04, 2022
 ;; Version: 1.0.0
-;; Keywords: convenience extensions lisp
+;; Keywords: lisp convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.3") (dash "2.18.0"))
 ;;
@@ -15,12 +14,23 @@
 ;;
 ;;; Commentary:
 ;;
-;; Addon to demap-minimap that adds the ability for a minimap to fallow the
-;; selected window and an overlay that shows that windows visible region and its
-;; current line.
+;; Addon for demap.el that adds modes meant to run in demap-minimap buffers.
+;; minimap modes (defined with `demap-define-minimap-miner-mode') are modes that
+;; can only be activated in a minimap. the minimap mode `demap-track-w-mode'
+;; updates the window that the minimap is showing while
+;; `demap-current-line-mode' and `demap-visible-region-mode' display information
+;; on the shown window. if you wish to make a minimap mode, use these as examples.
 ;;
-;;
-;;
+;; code layout:
+;;      define-minimap-miner-mode       ; helper macro for making modes for minimaps
+;;      track-w-mode                    ; minimap mode to fallow the active window
+;;              update                  ; update track-w-mode
+;;      current-line-mode               ; minimap mode to highlight the current line
+;;              update                  ; update current-line-mode's overlay
+;;              wake                    ; wake up current-line-mode
+;;      visible-region-mode             ; minimap mode to highlight the window's area
+;;              update                  ; update visible-region-mode's overlay
+;;              wake                    ; wake up visible-region-mode
 ;;
 ;;; Code:
 
@@ -31,7 +41,7 @@
 (require 'hl-line)
 
 
-;;;define minimap miner mode-------
+;;;define-minimap-miner-mode
 
 (eval-and-compile
   (defun demap--define-mode-var-get-doc(var &optional globalp funcp mode-func mode-pretty-name)
@@ -249,7 +259,7 @@ the rest of the arguments are passed to
          ,@(nreverse restr)
          ,@body ))))
 
-;;;track-w-mode-------
+;;;track-w-mode
 
 (defcustom demap-track-w-mode-update-p-func #'demap-track-w-mode-update-p-func-defalt
   "Function to determin if demap-minimap should show the selected window.
@@ -303,7 +313,7 @@ window then tell it to sleep."
     (demap--track-w-mode-update) ))
 
 
-;;;current-line-mode-------
+;;;current-line-mode
 
 (defface demap-current-line-face
   '((t (:inherit hl-line
@@ -359,7 +369,7 @@ this mode can only be used in a demap minimap buffer."
   (with-current-buffer (demap-minimap-buffer minimap)
     (demap--current-line-mode-update) ))
 
-;;current-line-mode activate
+;;current-line-mode wake
 
 (defun demap--current-line-mode-wake()
   "Wake up demap-current-line-mode."
@@ -381,7 +391,7 @@ this mode can only be used in a demap minimap buffer."
     (demap--current-line-mode-sleep) ))
 
 
-;;;visible-region-mode-------
+;;;visible-region-mode
 
 (defface demap-visible-region-face
   '((t (:inherit region
@@ -461,7 +471,7 @@ IGNORED is ignored for function hooks."
     (with-current-buffer (demap-minimap-buffer minimap)
       (demap--visible-region-mode-update) )))
 
-;;visible-region-mode activate
+;;visible-region-mode wake
 
 (defun demap--visible-region-mode-wake()
   "Wake up demap-visible-region-mode.
