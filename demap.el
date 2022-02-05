@@ -1,21 +1,33 @@
-;;; demap.el --- Description -*- lexical-binding: t; -*-
+;;; demap.el --- Detachable minimap package -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2021 Sawyer Gardner
 ;;
-;; Author: Sawyer Gardner <https://github.com/sawyer>
-;; Maintainer: Sawyer Gardner <sawyerjgardner@gmail.com>
+;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: November 25, 2021
-;; Modified: November 25, 2021
-;; Version: 0.0.1
-;; Keywords: extensions lisp tools
-;; Homepage: https://github.com/sawyer/demap
+;; Modified: February 04, 2022
+;; Version: 1.0.0
+;; Keywords: lisp tools convenience
+;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
 ;;
-;;  Description
+;; this package adds a minimap that shows a zoomed out view of the active window's
+;; buffer. you can toggle showing the minimap in a side window with
+;; `demap-minimap-toggle'.
+;;
+;; this package has a few advantages over other minimap packages.
+;; - support for detaching minimaps and having them on a diffrent frames then the
+;;      active window.
+;; - support for multiple minimap buffer, with there own buffer local definitions
+;;      on what buffers it can show and how to show them.
+;; - person preference, having the minimap on the side of the frame rather
+;;      then on the side of the active window.
+;;
+;; see the README for more information on the demap package and customization
+;; options.
 ;;
 ;;; Code:
 
