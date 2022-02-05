@@ -297,6 +297,12 @@ returns nil if the active window's buffer is not a
 file buffer."
   (buffer-file-name (window-buffer)) )
 
+(defun demap-track-w-mode-update-p-func-any()
+  "Determin if track-w mode can fallow the active window.
+meant to be a value for `demap-track-w-mode-update-p-func'.
+returns true for nearly any window, ignoring other minimaps"
+  (not (demap-buffer-minimap)) )
+
 (defun demap--track-w-mode-update()
   "Update the window the current minimap is showing.
 if the current minimap should not be showing the
