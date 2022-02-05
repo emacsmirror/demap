@@ -1,21 +1,24 @@
-;;; demap--tools.el --- Description -*- lexical-binding: t; -*-
+;;; demap--tools.el --- Private tools used by the demap package -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2022 Sawyer Gardner
 ;;
-;; Author: Sawyer Gardner <https://github.com/sawyer>
-;; Maintainer: Sawyer Gardner <sawyerjgardner@gmail.com>
+;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: January 04, 2022
-;; Modified: January 04, 2022
-;; Version: 0.0.1
-;; Keywords: abbrev bib c calendar comm convenience data docs emulations extensions faces files frames games hardware help hypermedia i18n internal languages lisp local maint mail matching mouse multimedia news outlines processes terminals tex tools unix vc wp
-;; Homepage: https://github.com/sawyer/demap-tool
+;; Modified: February 04, 2022
+;; Version: 1.0.0
+;; Keywords: lisp extensions internal local tools
+;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.3"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
 ;;
-;;  Description
+;; this file contains general purpose functions used by demap.el.
+;; these functions are made so that at some point, they can be replace with
+;; external packages or future implamentations of EMACS, and are not specialized
+;; to the demap package. everything defined here is still private and should not
+;; be loaded or used outside of the demap package.
 ;;
 ;;; Code:
 
@@ -62,7 +65,7 @@ see `buffer-base-buffer'."
   (or (buffer-base-buffer buffer)
       buffer ))
 
-;;varables
+;;variables
 
 (defun demap--tools-delete-redundant-keys(key seq)
   "Remove KEY and its value from SEQ, skipping the last one."
@@ -148,8 +151,8 @@ unsafe version of `demap--tools-dolists'.
 Evaluate BODY with VAR bound to each car from LIST,
 in turn. if LIST is not a list then evaluate BODY
 with VAR bound to the value of LIST. this process
-is stacked for each VAR and LIST given, evaluateing
-BODY with every combanation a LIST elements. STEP
+is stacked for each VAR and LIST given, evaluating
+BODY with every combination a LIST elements. STEP
 is evaluated each time the end of LIST is reached.
 returns the value of STEP in the first spec.
 see `dolist'.
