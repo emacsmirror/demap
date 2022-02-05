@@ -1,21 +1,48 @@
-;;; demap-minimap.el --- Description -*- lexical-binding: t; -*-
+;;; demap-minimap.el --- Demap minimap core file -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2022 Sawyer Gardner
 ;;
 ;; Author: Sawyer Gardner <https://github.com/sawyer>
-;; Maintainer: Sawyer Gardner <sawyerjgardner@gmail.com>
 ;; Created: January 03, 2022
-;; Modified: January 03, 2022
-;; Version: 0.0.1
-;; Keywords: abbrev bib c calendar comm convenience data docs emulations extensions faces files frames games hardware help hypermedia i18n internal languages lisp local maint mail matching mouse multimedia news outlines processes terminals tex tools unix vc wp
-;; Homepage: https://github.com/sawyer/demap-minimap
+;; Modified: February 04, 2022
+;; Version: 1.0.0
+;; Keywords: lisp
+;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.3") (dash "2.18.0"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
 ;;
-;;  Description
+;; this file contains the core of demap.el's implamentation. this includes the
+;; definitions for the minimap object, buffer, custom variables, faces, and hooks.
+;; wile thare is little here ment for the 'user' to care about outside of the
+;; faces custom varable. custom modes or external packages can use the functions
+;; defined here to change or add feateres to minimaps.
+;;
+;; demap minimaps are objects constructed from `demap-minimap-construct'. these objects
+;; are asoshiated with a buffer (abtained with `demap-minimap-buffer') often
+;; refered to has a minimap-buffer. minimaps also have a buffer it is showing
+;; (obtained or set with `demap-minimap-showing'). while not required,
+;; `demap-minimap-window' can set a minimap to show the buffer in a window, and
+;; pass the window to `demap-minimap-window-set-hook'.
+;;
+;; sometimes when a minimap changes what it is showing, it needs to reconstruct
+;; its buffer. to help with this are the hooks `demap-minimap-change-functions',
+;; `demap-minimap-change-major-mode-hook' and the list
+;; `demap-minimap-protected-variables'.
+;;
+;; examples on how to use minimap objects can be found in 'demap-modes.el'.
+;;
+;; code layout:
+;;      variables               ; custom variables and hooks
+;;      minimap struct          ; minimap object definition
+;;              protect         ; management of protected variables
+;;              buffer          ; management of minimap buffers
+;;              showing         ; the buffer minimap is showing
+;;              construct       ; construct minimap object
+;;              window current  ; window the current minimap is showing
+;;              window          ; window minimap is showing
 ;;
 ;;; Code:
 
