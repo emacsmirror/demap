@@ -1,4 +1,4 @@
-;;; demap-modes.el --- modes for demap minimaps -*- lexical-binding: t; -*-
+;;; demap-modes.el --- Modes for demap minimaps -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2022 Sawyer Gardner
 ;;
@@ -43,63 +43,6 @@
 
 
 ;;;define-minimap-miner-mode
-
-(eval-and-compile
-  (defun demap--define-mode-var-get-doc(var &optional globalp funcp mode-func mode-pretty-name)
-    "Return the documentation that define-miner-mode would give to a mode var.
-VAR       is the varable symbol.
-GLOBALP   is wether the varable is global or local by defalt.
-FUNCP     is wether the variable should be set by a function.
-MODE-FUNC is the function to set VAR (defalts to VAR).
-MODE-PRETTY-NAME is the pretty version of the mode's name."
-    (let ((doc-g1 "Non-nil if %s is enabled.
-See the `%s' command
-for a description of this minor mode." )
-          (doc-g2 "
-Setting this variable directly does not take effect;
-either customize it (see the info node `Easy Customization')
-or call the function `%s'." )
-          (doc-local "Non-nil if %s is enabled.
-Use the command `%s' to change this variable." ))
-      (setq mode-func        (or mode-func
-                                 var )
-            mode-pretty-name (or mode-pretty-name
-                                 mode-func ));TODO: real pretty name
-      (if globalp
-          (concat (format doc-g1 mode-pretty-name mode-func)
-                  (when funcp (format doc-g2 mode-func)) )
-        (format doc-local mode-pretty-name mode-func) ))))
-
-(defmacro demap--define-mode-var(var init-value &optional globalp funcp doc &rest args)
-  "Define a variable VAR the same way define-miner-mode would.
-INIT-VALUE defalt value.
-GLOBALP    is wether the varable is global or local by defalt.
-FUNCP      is wether the variable should be set by a function.
-DOC        if not nil, override generated documentation.
-ARGS       arguments, see `define-miner-mode'."
-  (declare (doc-string 5))
-  (if globalp
-      (progn
-        ;;TODO: maybe remove this line
-        (setq args (demap--tools-delete-redundant-keys :require args))
-        `(defcustom ,var ,init-value
-           ,(or doc (demap--define-mode-var-get-doc var t funcp))
-           ,@(unless (memq :group args)
-               '(:group ',(->> (symbol-name var)
-                               (replace-regexp-in-string "-mode\\'" "")
-                               (intern) )))
-           ,@(unless (memq :set args)
-               '(:set #'custom-set-minor-mode) )
-           ,@(unless (memq :initialize args)
-               '(:initialize 'custom-initialize-default) )
-           ,@(unless (memq :type args)
-               '(:type 'boolean) )
-           ,@args ))
-    `(progn
-       :autoload-end
-       (defvar-local ,var ,init-value
-         ,(or doc (demap--define-mode-var-get-doc var)) ))))
-
 
 ;;;###autoload
 (defmacro demap-define-minimap-miner-mode(mode doc &rest body)
@@ -213,7 +156,7 @@ the rest of the arguments are passed to
     `(progn
        ;;variable
        ,@(when construct-variable
-           `((demap--define-mode-var ,mode ,init-value
+           `((demap--tools-define-mode-var ,mode ,init-value
                                      ,globalp ,(and body t) nil
                                      ,@(nreverse restr) )))
        ;;function
