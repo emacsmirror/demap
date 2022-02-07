@@ -15,7 +15,7 @@ clean:
 
 $(PKG_FILE): $(PROJECT_EL)
 	mkdir -p $(BUILD_DIR)
-	echo "(define-package \"$(PROJECT)\" \"$(VERSION)\" \"\" '$(REQUIRES))" > $(PKG_FILE)
+	echo "(define-package \""'$(PROJECT)'"\" \""'$(VERSION)'"\" \"\" '"'$(REQUIRES)'")" > $(PKG_FILE)
 
 $(OUT_FILE): $(PKG_FILE) $(FILES)
 	mkdir -p $(BUILD_DIR)
