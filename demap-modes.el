@@ -205,7 +205,8 @@ the rest of the arguments are passed to
 
 ;;;track-window-mode
 
-(defcustom demap-track-window-mode-update-p-func #'demap-track-window-mode-update-p-func-defalt
+(defcustom demap-track-window-mode-update-p-func
+  #'demap-track-window-mode-update-p-func-defalt
   "Function to determin if demap-minimap should show the selected window.
 the function should accept no arguments. it should
 return nil if the current minimap should not show the
@@ -291,15 +292,19 @@ this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
                (setq demap-current-line-mode (make-overlay 0 0))
-               (add-hook 'demap-minimap-window-set-hook   #'demap--current-line-mode-wake-if nil t)
-               (add-hook 'demap-minimap-window-sleep-hook #'demap--current-line-mode-sleep   nil t) )
+               (-as-> #'demap--current-line-mode-wake-if func
+                      (add-hook 'demap-minimap-window-set-hook   func nil t) )
+               (-as-> #'demap--current-line-mode-sleep func
+                      (add-hook 'demap-minimap-window-sleep-hook func nil t) ))
 
   :kill-func (progn
                (demap--current-line-mode-sleep)
                (delete-overlay demap-current-line-mode)
                (kill-local-variable 'demap-current-line-mode)
-               (remove-hook 'demap-minimap-window-set-hook   #'demap--current-line-mode-wake-if t)
-               (remove-hook 'demap-minimap-window-sleep-hook #'demap--current-line-mode-sleep   t) ))
+               (-as-> #'demap--current-line-mode-wake-if func
+                      (remove-hook 'demap-minimap-window-set-hook   func t) )
+               (-as-> #'demap--current-line-mode-sleep func
+                      (remove-hook 'demap-minimap-window-sleep-hook func t) )))
 
 ;;current-line-mode update
 
@@ -372,14 +377,18 @@ this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
                (setq demap-visible-region-mode (make-overlay 0 0))
-               (add-hook 'demap-minimap-window-set-hook   #'demap--visible-region-mode-wake-if nil t)
-               (add-hook 'demap-minimap-window-sleep-hook #'demap--visible-region-mode-rest       nil t) )
+               (-as-> #'demap--visible-region-mode-wake-if func
+                      (add-hook 'demap-minimap-window-set-hook   func nil t) )
+               (-as-> #'demap--visible-region-mode-rest func
+                      (add-hook 'demap-minimap-window-sleep-hook func nil t) ))
   :kill-func (progn
                (demap--visible-region-mode-sleep)
                (delete-overlay demap-visible-region-mode)
                (kill-local-variable 'demap-visible-region-mode)
-               (remove-hook 'demap-minimap-window-set-hook   #'demap--visible-region-mode-wake-if t)
-               (remove-hook 'demap-minimap-window-sleep-hook #'demap--visible-region-mode-rest       t) ))
+               (-as-> #'demap--visible-region-mode-wake-if func
+                      (remove-hook 'demap-minimap-window-set-hook   func t) )
+               (-as-> #'demap--visible-region-mode-rest func
+                      (remove-hook 'demap-minimap-window-sleep-hook func t) ))
 
 ;;visible-region-mode update
 
@@ -442,7 +451,8 @@ set face and add hooks to update overlay."
 (defun demap--visible-region-mode-sleep()
   "Put demap-visible-region-mode to sleep.
 set face and remove hooks that update overlay."
-  (overlay-put demap-visible-region-mode 'face 'demap-visible-region-inactive-face)
+  (->> 'demap-visible-region-inactive-face
+       (overlay-put demap-visible-region-mode 'face) )
   (->> (demap-buffer-minimap)
        (apply-partially #'demap--visible-region-mode-update-window-as)
        (remove-hook 'window-scroll-functions) )
@@ -458,7 +468,8 @@ set face and remove hooks that update overlay."
 
 (defun demap--visible-region-mode-rest()
   "Change demap-visible-region-mode overlay's face to reflect minimap state."
-  (overlay-put demap-visible-region-mode 'face 'demap-visible-region-inactive-face) )
+  (->> 'demap-visible-region-inactive-face
+       (overlay-put demap-visible-region-mode 'face) ))
 
 
 (provide 'demap-modes)

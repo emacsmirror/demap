@@ -287,8 +287,9 @@ buffer is killed."
     (setf (demap-minimap--buffer minimap) new-buffer)
     (with-current-buffer new-buffer
       (setq-local demap--current-minimap minimap)
-      (add-hook 'change-major-mode-hook #'demap--minimap-change-major-mode-hook-run nil t)
-      (add-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run nil t) )
+      (add-hook 'kill-buffer-hook #'demap--minimap-kill-hook-run nil t)
+      (-as-> #'demap--minimap-change-major-mode-hook-run func
+           (add-hook 'change-major-mode-hook func nil t) ))
     (when old-buffer
       (with-current-buffer old-buffer
         (demap--minimap-protected-copy-variables new-buffer)

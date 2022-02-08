@@ -203,7 +203,8 @@ from HOOK. the returned function excepts no arguments.
 DEPTH and LOCAL are passed to `add-hook'."
   (demap--tools-add-hook hook func depth local)
   (if local
-      (apply-partially 'demap--tools-remove-hook-local hook func (current-buffer))
+      (->> (current-buffer)
+           (apply-partially 'demap--tools-remove-hook-local hook func) )
     (apply-partially 'demap--tools-remove-hook hook func) ))
 
 (defun demap--tools-smart-add-hooks(hooks funcs &optional depth local)
@@ -218,7 +219,8 @@ from HOOKS. the returned function excepts no arguments.
 DEPTH and LOCAL are passed to `add-hook'."
   (demap--tools-add-hooks hooks funcs depth local)
   (if local
-      (apply-partially 'demap--tools-remove-hooks-local hooks funcs (current-buffer))
+      (->> (current-buffer)
+           (apply-partially 'demap--tools-remove-hooks-local hooks funcs) )
     (apply-partially 'demap--tools-remove-hooks hooks funcs) ))
 
 
@@ -280,7 +282,9 @@ DEPTH is passed to `add-hook'."
 ;;modes
 
 (eval-and-compile
-  (defun demap--tools-define-mode-var-get-doc(var &optional globalp funcp mode-func mode-pretty-name)
+  (defun demap--tools-define-mode-var-get-doc(var
+                                              &optional globalp funcp
+                                              mode-func mode-pretty-name )
     "Return the documentation that define-miner-mode would give to a mode var.
 VAR       is the varable symbol.
 GLOBALP   is wether the varable is global or local by defalt.
@@ -305,7 +309,9 @@ Use the command `%s' to change this variable." ))
                   (when funcp (format doc-g2 mode-func)) )
         (format doc-local mode-pretty-name mode-func) ))))
 
-(defmacro demap--tools-define-mode-var(var init-value &optional globalp funcp doc &rest args)
+(defmacro demap--tools-define-mode-var(var init-value
+                                       &optional globalp funcp doc
+                                       &rest args )
   "Define a variable VAR the same way define-miner-mode would.
 INIT-VALUE defalt value.
 GLOBALP    is wether the varable is global or local by defalt.
