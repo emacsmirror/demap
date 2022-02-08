@@ -68,7 +68,9 @@
   :group 'demap
   :type 'string)
 
-(defcustom demap-minimap-construct-hook '(demap-track-window-mode demap-current-line-mode demap-visible-region-mode)
+(defcustom demap-minimap-construct-hook '(demap-track-window-mode
+                                          demap-current-line-mode
+                                          demap-visible-region-mode )
   "Normal hook ran after construct a demap-minimap.
 this hook is ran has the buffer used by the new minimap."
   :group 'demap
@@ -350,9 +352,11 @@ NAME    is the name of the buffer.
         defalts to `demap-minimap-defalt-name'.
 SHOWING is the buffer that the minimap is showing.
         defalts to a blank buffer."
-  (interactive (list (read-string (format "Construct minimap (minimap name) (deflat %s): " demap-minimap-defalt-name)
-                                  nil nil demap-minimap-defalt-name)
-                     (read-buffer "Buffer minimap's showing: " "" t)))
+  (interactive (list (read-string
+                      (format "Construct minimap (minimap name) (deflat %s): "
+                              demap-minimap-defalt-name )
+                      nil nil demap-minimap-defalt-name )
+                     nil ))
   (when (equal showing "")
     (setq showing nil) )
   (let ((minimap (demap--minimap-construct))
@@ -395,11 +399,13 @@ this is the same has
   (let ((minimap (demap-buffer-minimap)))
     (setf demap--minimap-window window
           (demap-minimap-showing minimap) (window-buffer window) )
-    (with-current-buffer (demap-minimap--buffer minimap) ;minimaps buffer could have change
+    ;;minimap's buffer may have change
+    (with-current-buffer (demap-minimap--buffer minimap)
       (with-demoted-errors "error in demap-minimap-window-set-hook: %s"
         (run-hooks 'demap-minimap-window-set-hook) ))))
 
-(gv-define-simple-setter demap-current-minimap-window demap-current-minimap-window-set)
+(gv-define-simple-setter demap-current-minimap-window
+                         demap-current-minimap-window-set )
 
 ;;minimap window
 

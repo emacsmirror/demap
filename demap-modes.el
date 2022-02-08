@@ -98,6 +98,7 @@ the rest of the arguments are passed to
         (construct-variable t);variable
         (getter    mode)
         (setter    `(setf ,mode))
+        oof
         after-hook
         (restr     '())
 
@@ -134,31 +135,59 @@ the rest of the arguments are passed to
           (:after-hook (setq after-hook val))
           ;;new
           (:protect    (if (symbolp val)
-                           (push val protect)
-                         (setq protect (append val protect)) ))
+                           (push `',val protect)
+                         (->> val
+                              (mapcar (lambda(x) `',x))
+                              (prependq! protect) )))
           (:init-func  (setq init-func  val))
           (:kill-func  (setq kill-func  val))
           (:set-func   (setq set-func   val))
           ;;rest
-          (_           (setq restr (append (list val key) restr))) )))
+          (_           (prependq! restr (list val key))) )))
     ;;set defalts
-    (setq init-func  (or init-func `(,@setter t  ))
+    (setq restr (nreverse restr)
+          init-func  (or init-func `(,@setter t  ))
           kill-func  (or kill-func `(,@setter nil))
-          set-func   (or set-func
-                         (let ((state-var (make-symbol "-state")))
-                           `(lambda(,state-var)
-                              (if ,state-var
-                                  ,init-func
-                                ,kill-func )))))
+          set-func   (--> (or set-func
+                              (let ((state-var (make-symbol "-state")))
+                                `(lambda(,state-var)
+                                   (if ,state-var
+                                       ,init-func
+                                     ,kill-func ))))
+                          (if (symbolp it)
+                              `(,it)
+                            `(funcall ,it) )))
     (when (and construct-variable (not globalp))
-      (push mode protect) )
+      (push `',mode protect) )
+    (setq oof (let ((error-msg "%s can only be used in a demap-minimap buffer")
+                    (kill-hook 'demap-minimap-kill-hook)
+                    (kill-func `(lambda()
+                                  (,mode 0) ))
+                    (chng-hook 'demap-minimap-change-major-mode-hook)
+                    (chng-func `(lambda()
+                                  (unless (get ',mode 'permanent-local)
+                                    (,mode 0) ))))
+                `(lambda(state)
+                   (cl-assert (demap-buffer-minimap) nil ,error-msg ',mode)
+                   (when (xor state ,getter)
+                     (,@set-func state)
+                     ;;if varable did change
+                     (unless (xor state ,getter)
+                       (if state
+                           (progn
+                             (demap-minimap-protect-variables t ,@protect)
+                             (add-hook ',kill-hook ',kill-func nil t)
+                             (add-hook ',chng-hook ',chng-func nil t) )
+                         (demap-minimap-unprotect-variables t ,@protect)
+                         (remove-hook ',kill-hook ',kill-func t)
+                         (remove-hook ',chng-hook ',chng-func t) ))))))
     ;;construct
     `(progn
        ;;variable
        ,@(when construct-variable
            `((demap--tools-define-mode-var ,mode ,init-value
                                      ,globalp ,(and body t) nil
-                                     ,@(nreverse restr) )))
+                                     ,@restr )))
        ;;function
        (define-minor-mode ,mode
          ,doc
@@ -170,37 +199,8 @@ the rest of the arguments are passed to
                           `((when (called-interactively-p 'any)
                               (customize-mark-as-set ',mode) )))
                       ,@after-hook)
-         :variable (,getter . (lambda(state)
-                                (cl-assert (demap-buffer-minimap) nil "%s can only be used in a demap-minimap buffer" ',mode)
-                                (when (xor state ,getter)
-                                  ,(if (symbolp set-func)
-                                       `(,set-func state)
-                                     `(funcall ,set-func state) )
-                                  ;;if varable did change
-                                  (when (not (xor state ,getter))
-                                    (if state
-                                        (progn
-                                          (demap-minimap-protect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                          (add-hook 'demap-minimap-kill-hook
-                                                    (lambda()
-                                                      (,mode 0) )
-                                                    nil t )
-                                          (add-hook 'demap-minimap-change-major-mode-hook
-                                                    (lambda()
-                                                      (unless (get ',mode 'permanent-local)
-                                                        (,mode 0) ))
-                                                    nil t ))
-                                      (demap-minimap-unprotect-variables t ,@(mapcar (lambda(j) `',j) protect))
-                                      (remove-hook 'demap-minimap-kill-hook
-                                                   (lambda()
-                                                     (,mode 0) )
-                                                   t )
-                                      (remove-hook 'demap-minimap-change-major-mode-hook
-                                                   (lambda()
-                                                     (unless (get ',mode 'permanent-local)
-                                                       (,mode 0) ))
-                                                   t ))))))
-         ,@(nreverse restr)
+         :variable (,getter . ,oof)
+         ,@restr
          ,@body ))))
 
 ;;;track-window-mode
@@ -225,10 +225,12 @@ this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
                (setf demap-track-window-mode t)
-               (->> (apply-partially #'demap-track-window-mode-update-as (demap-buffer-minimap))
+               (->> (demap-buffer-minimap)
+                    (apply-partially #'demap-track-window-mode-update-as)
                     (add-hook 'window-state-change-hook) ))
   :kill-func (progn
-               (->> (apply-partially #'demap-track-window-mode-update-as (demap-buffer-minimap))
+               (->> (demap-buffer-minimap)
+                    (apply-partially #'demap-track-window-mode-update-as)
                     (remove-hook 'window-state-change-hook) )
                (kill-local-variable 'demap-track-window-mode) ) )
 
@@ -324,14 +326,16 @@ this mode can only be used in a demap minimap buffer."
 (defun demap--current-line-mode-wake()
   "Wake up demap-current-line-mode."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-face)
-  (->> (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap))
+  (->> (demap-buffer-minimap)
+       (apply-partially #'demap--current-line-mode-update-has)
        (add-hook 'post-command-hook) )
   (demap--current-line-mode-update) )
 
 (defun demap--current-line-mode-sleep()
   "Set demap-current-line-mode to sleep."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-inactive-face)
-  (->> (apply-partially #'demap--current-line-mode-update-has (demap-buffer-minimap))
+  (->> (demap-buffer-minimap)
+       (apply-partially #'demap--current-line-mode-update-has)
        (remove-hook 'post-command-hook) ))
 
 (defun demap--current-line-mode-wake-if()
@@ -403,7 +407,7 @@ minimap will scroll if overlay goes off screen."
             (set-window-point w ov-start) )
           (when (<= (window-end w t) ov-end)
             (set-window-point w ov-end) )))
-    (demap--visible-region-mode-sleep) ));TODO: remove
+    (demap--visible-region-mode-sleep) ));TODO: see if this line can be removed
 
 (defun demap--visible-region-mode-update-has(minimap &rest ignored)
   "Update the position of demap-visible-region-mode's overlay in MINIMAP.
@@ -427,9 +431,11 @@ IGNORED is ignored for function hooks."
   "Wake up demap-visible-region-mode.
 set face and add hooks to update overlay."
   (overlay-put demap-visible-region-mode 'face 'demap-visible-region-face)
-  (->> (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap))
+  (->> (demap-buffer-minimap)
+       (apply-partially #'demap--visible-region-mode-update-window-as)
        (add-hook 'window-scroll-functions) )
-  (->> (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))
+  (->> (demap-buffer-minimap)
+       (apply-partially #'demap--visible-region-mode-update-has)
        (add-hook 'window-size-change-functions) )
   (demap--visible-region-mode-update) )
 
@@ -437,9 +443,11 @@ set face and add hooks to update overlay."
   "Put demap-visible-region-mode to sleep.
 set face and remove hooks that update overlay."
   (overlay-put demap-visible-region-mode 'face 'demap-visible-region-inactive-face)
-  (->> (apply-partially #'demap--visible-region-mode-update-window-as (demap-buffer-minimap))
+  (->> (demap-buffer-minimap)
+       (apply-partially #'demap--visible-region-mode-update-window-as)
        (remove-hook 'window-scroll-functions) )
-  (->> (apply-partially #'demap--visible-region-mode-update-has       (demap-buffer-minimap))
+  (->> (demap-buffer-minimap)
+       (apply-partially #'demap--visible-region-mode-update-has)
        (remove-hook 'window-size-change-functions) ))
 
 (defun demap--visible-region-mode-wake-if()

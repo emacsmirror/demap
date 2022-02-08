@@ -87,7 +87,8 @@ it will no longer be buffer local in TO-BUFFER."
   (setq from-buffer (or from-buffer (current-buffer))
         to-buffer   (or to-buffer   (current-buffer)) )
   (if (local-variable-p variable from-buffer)
-      (setf (buffer-local-value variable to-buffer) (buffer-local-value variable from-buffer))
+      (setf (buffer-local-value variable to-buffer)
+            (buffer-local-value variable from-buffer) )
     (with-current-buffer to-buffer
       (kill-local-variable variable) )))
 
@@ -314,7 +315,6 @@ ARGS       arguments, see `define-miner-mode'."
   (declare (doc-string 5))
   (if globalp
       (progn
-        ;;TODO: maybe remove this line
         (setq args (demap--tools-delete-redundant-keys :require args))
         `(defcustom ,var ,init-value
            ,(or doc (demap--tools-define-mode-var-get-doc var t funcp))
