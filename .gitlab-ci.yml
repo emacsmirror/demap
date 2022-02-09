@@ -15,7 +15,7 @@ package-refresh:
     - $IN_EMACS_HOME emacs --batch --eval "(package-refresh-contents)"
   artifacts:
     paths:
-      - $HOME/.emacs.d
+      - $EMACS_HOME
 
 build:
   stage: build
