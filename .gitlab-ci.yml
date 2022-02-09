@@ -1,6 +1,8 @@
 default:
   image: silex/emacs:27.2-ci
 
+variables:
+  HOME: "$CI_JOB_STAGE/.Home"
 
 stages:
   - build
@@ -12,7 +14,7 @@ package-refresh:
     - emacs --batch --eval "(package-refresh-contents)"
   artifacts:
     paths:
-      - /root/.emacs.d/
+      - $HOME/.emacs.d
 
 build:
   stage: build
