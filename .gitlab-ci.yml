@@ -6,6 +6,14 @@ stages:
   - build
   - test
 
+package-refresh:
+  stage: build
+  script:
+    - emacs --batch --eval "(require 'package) (package-refresh-contents)"
+  artifacts:
+    paths:
+      - ~/.emacs.d/
+
 build:
   stage: build
   script:
