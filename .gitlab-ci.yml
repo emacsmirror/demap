@@ -12,7 +12,7 @@ stages:
 package-refresh:
   stage: build
   script:
-    - $IN_EMACS_HOME emacs --batch --eval "(package-refresh-contents)"
+    - $IN_EMACS_HOME emacs --batch --eval "(progn (package-refresh-contents) (package-install 'dash))"
   artifacts:
     paths:
       - $EMACS_HOME
