@@ -14,9 +14,10 @@ clean:
 	rm -r $(BUILD_DIR)
 
 test:
-	emacs -batch \
-		--eval "(package-install-file \"$(OUT_FILE)\")"\
-		--eval "(demap-minimap-open)"\
+	emacs -batch                                        \
+		--eval "(package-refresh-contents)"             \
+		--eval "(package-install-file \"$(OUT_FILE)\")" \
+		--eval "(demap-minimap-open)"
 
 $(PKG_FILE): $(PROJECT_EL)
 	mkdir -p $(BUILD_DIR)
@@ -24,8 +25,8 @@ $(PKG_FILE): $(PROJECT_EL)
 
 $(OUT_FILE): $(PKG_FILE) $(FILES)
 	mkdir -p $(BUILD_DIR)
-	tar -cf $(OUT_FILE)                   \
-     --transform='s,^build/,,'            \
-     --transform='s,^,$(OUT_FILE_NAME)/,' \
-	 $(PKG_FILE)                          \
-	 $(FILES)
+	tar -cf $(OUT_FILE)                      \
+		--transform='s,^$(BUILD_DIR)/,,'     \
+		--transform='s,^,$(OUT_FILE_NAME)/,' \
+		$(PKG_FILE)                          \
+		$(FILES)

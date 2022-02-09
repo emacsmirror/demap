@@ -1,26 +1,14 @@
 default:
   image: silex/emacs:27.2-ci
 
-variables:
-  EMACS_HOME: "$CI_JOB_STAGE/.Home"
-  IN_EMACS_HOME: env HOME=$EMACS_HOME
-
 stages:
   - build
   - test
 
-package-refresh:
-  stage: build
-  script:
-    - $IN_EMACS_HOME emacs --batch --eval "(progn (package-refresh-contents) (package-install 'dash))"
-  artifacts:
-    paths:
-      - $EMACS_HOME
-
 build:
   stage: build
   script:
-    -  $IN_EMACS_HOME make all
+    - make all
   artifacts:
     paths:
       - build/
@@ -28,7 +16,7 @@ build:
 test:
   stage: test
   script:
-    - $IN_EMACS_HOME make test
+    - make test
   dependencies:
     - build
 
