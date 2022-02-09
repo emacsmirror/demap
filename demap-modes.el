@@ -136,14 +136,16 @@ the rest of the arguments are passed to
           ;;new
           (:protect    (if (symbolp val)
                            (push `',val protect)
-                         (->> val
-                              (mapcar (lambda(x) `',x))
-                              (prependq! protect) )))
+                         (--> (mapcar (lambda(x) `',x) val)
+                              (append it protect)
+                              (setq protect it) )))
           (:init-func  (setq init-func  val))
           (:kill-func  (setq kill-func  val))
           (:set-func   (setq set-func   val))
           ;;rest
-          (_           (prependq! restr (list val key))) )))
+          (_           (--> (list val key)
+                            (append it restr)
+                            (setq restr it) )))))
     ;;set defalts
     (setq restr (nreverse restr)
           init-func  (or init-func `(,@setter t  ))
