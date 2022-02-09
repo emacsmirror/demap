@@ -9,7 +9,7 @@ stages:
 package-refresh:
   stage: build
   script:
-    - emacs --batch --eval "(require 'package) (package-refresh-contents)"
+    - emacs --batch --eval "(package-refresh-contents)"
   artifacts:
     paths:
       - /root/.emacs.d/
