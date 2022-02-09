@@ -12,7 +12,7 @@ package-refresh:
     - emacs --batch --eval "(require 'package) (package-refresh-contents)"
   artifacts:
     paths:
-      - ~/.emacs.d/
+      - /root/.emacs.d/
 
 build:
   stage: build
