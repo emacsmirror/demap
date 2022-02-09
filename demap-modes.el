@@ -390,7 +390,7 @@ this mode can only be used in a demap minimap buffer."
                (-as-> #'demap--visible-region-mode-wake-if func
                       (remove-hook 'demap-minimap-window-set-hook   func t) )
                (-as-> #'demap--visible-region-mode-rest func
-                      (remove-hook 'demap-minimap-window-sleep-hook func t) ))
+                      (remove-hook 'demap-minimap-window-sleep-hook func t) )))
 
 ;;visible-region-mode update
 
