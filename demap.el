@@ -65,8 +65,9 @@ action to `display-buffer-alist' for minimaps."
       (demap-normalize-minimap)
       (demap-minimap-buffer)
       (display-buffer '((display-buffer-in-side-window)
-                        (side . right)
-                        (window-width . 20) )
+                        (side          . right)
+                        (window-width  . 20)
+                        (preserve-size . (t . nil)) )
                       frame )))
 
 ;;;###autoload
@@ -148,8 +149,9 @@ WIDTH is the width of the window, should be an
        (setq display-buffer-alist it))
   (push `(,#'demap-minimap-buffer-display-condition
           (display-buffer-in-side-window)
-          (side         . ,side)
-          (window-width . ,width) )
+          (side          . ,side)
+          (window-width  . ,width)
+          (preserve-size . (t . nil)) )
         display-buffer-alist ))
 
 (provide 'demap)
