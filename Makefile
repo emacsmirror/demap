@@ -13,6 +13,11 @@ all: $(OUT_FILE)
 clean:
 	rm -r $(BUILD_DIR)
 
+test:
+	emacs -batch \
+		--eval "(package-install-file \"$(OUT_FILE)\")"\
+		--eval "(demap-minimap-open)"\
+
 $(PKG_FILE): $(PROJECT_EL)
 	mkdir -p $(BUILD_DIR)
 	echo "(define-package \""'$(PROJECT)'"\" \""'$(VERSION)'"\" \"\" '"'$(REQUIRES)'")" > $(PKG_FILE)
