@@ -67,6 +67,12 @@ see `buffer-base-buffer'."
   (or (buffer-base-buffer buffer)
       buffer ))
 
+(defun demap--tools-side-window-p(window)
+  "Whether WINDOW is a side window."
+  (or (window-parameter window 'window-side)
+      (-some-> (window-parent window)
+        (window-parameter 'window-side) )))
+
 ;;variables
 
 (defun demap--tools-delete-redundant-keys(key seq)

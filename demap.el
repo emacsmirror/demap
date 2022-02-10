@@ -38,6 +38,14 @@
 (require 'dash)
 (require 'cl-lib)
 
+(defcustom demap-minimap-close-kill-minimap-p t
+  "Whether `demap-minimap-close' can kill minimap buffers.
+`demap-minimap-close' will only kill the minimap
+buffer if it is not in any other window."
+  :type  'boolean
+  :group 'demap)
+
+
 ;;;###autoload
 (defun demap-minimap-open(&optional minimap-or-name frame)
   "Open minimap in a side window.
@@ -88,22 +96,23 @@ of the fallowing:
     'visible for any visible frame,
     0        for any visible.
 
+could kill MINIMAP-OR-NAME if
+`demap-minimap-close-kill-minimap-p' is non-nil.
+
 if a window is removed returns t, otherwise nil."
   (interactive)
-  (cl-dolist (window
-              (-some->
-                  (-> (or minimap-or-name
-                          demap-minimap-defalt-name )
-                      (demap-normalize-minimap)
-                      (ignore-errors) )
-                (-> (demap-minimap-buffer)
-                    (get-buffer-window-list nil frame) ))
-              nil )
-    (when (or (window-parameter window 'window-side)
-              (-some-> (window-parent window)
-                (window-parameter 'window-side) ))
-      (delete-window window)
-      (cl-return t) )))
+  (-when-let (minimap-buffer (ignore-errors
+                               (-> (or minimap-or-name
+                                       demap-minimap-defalt-name )
+                                   (demap-normalize-minimap)
+                                   (demap-minimap--buffer) )))
+    (cl-dolist (window (get-buffer-window-list minimap-buffer nil frame) nil)
+      (when (demap--tools-side-window-p window)
+        (delete-window window)
+        (when (and demap-minimap-close-kill-minimap-p
+                   (not (get-buffer-window minimap-buffer t)) )
+          (kill-buffer minimap-buffer) )
+        (cl-return t) ))))
 
 ;;;###autoload
 (defun demap-minimap-toggle(&optional minimap-or-name frame)
