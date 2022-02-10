@@ -8,7 +8,7 @@
 ;; Version: 1.0.0
 ;; Keywords: lisp extensions internal local tools
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -26,6 +26,8 @@
   (when (>= emacs-major-version 28)
     ;window.el doesn't provide 'window before version 28
     (require 'window) ))
+
+(require 'dash)
 
 ;;define
 
