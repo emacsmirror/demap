@@ -408,6 +408,11 @@ this is the same has
 (gv-define-simple-setter demap-current-minimap-window
                          demap-current-minimap-window-set )
 
+(defun demap-current-minimap-window-sleep()
+  "Run hook `demap-minimap-window-sleep-hook'."
+  (with-demoted-errors "error in demap-minimap-window-sleep-hook: %s"
+    (run-hooks 'demap-minimap-window-sleep-hook) ))
+
 ;;minimap window
 
 (defun demap-minimap-window(&optional minimap-or-name)
@@ -435,12 +440,6 @@ this is the same has
 
 (gv-define-setter demap--minimap-window-as(window &optional minimap-or-name)
   `(demap--minimap-window-set-as ,minimap-or-name ,window))
-
-
-(defun demap-current-minimap-window-sleep()
-  "Run hook `demap-minimap-window-sleep-hook'."
-  (with-demoted-errors "error in demap-minimap-window-sleep-hook: %s"
-    (run-hooks 'demap-minimap-window-sleep-hook) ))
 
 (defun demap-minimap-window-sleep(minimap)
   "Run hook `demap-minimap-window-sleep-hook' has MINIMAP."

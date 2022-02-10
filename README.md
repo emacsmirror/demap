@@ -13,8 +13,7 @@ Screenshots
 -|-
 ![Demap in leuven theme](https://drive.google.com/uc?export=view&id=1VLprbi2G9TJiBcu19ma-EpyeLjNxsz7L) | ![Demap in doom-one theme](https://drive.google.com/uc?export=view&id=1i2z4dBbZnyLZqLzJEvaXIeIXmNz-FeIC) 
 
-That last one is setup with [Solaire-mode](https://github.com/hlissner/emacs-solaire-mode), [Doom Emacs](https://github.com/hlissner/doom-emacs), the theme [doom-one](https://github.com/doomemacs/themes), and the font [Minimap](https://github.com/davestewart/minimap-font).
-The configuration used for the last one is:
+That last screenshot has [Solaire-mode](https://github.com/hlissner/emacs-solaire-mode), [Doom Emacs](https://github.com/hlissner/doom-emacs), the theme [doom-one](https://github.com/doomemacs/themes), and the font [Minimap](https://github.com/davestewart/minimap-font). The configuration used for it is:
 ``` emacs-lisp
 (setq doom-theme 'doom-one)
 (after! (solaire-mode demap)

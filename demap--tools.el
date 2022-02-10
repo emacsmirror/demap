@@ -32,7 +32,7 @@
 ;;define
 
 (defvar demap--tools-demap-defined-start-p nil
-  "Wether demap.el has started loading.")
+  "Whether demap.el has started loading.")
 
 (defun demap--tools-define-demap-start()
   "Mark that demap.el has started loading."

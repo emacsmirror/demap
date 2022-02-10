@@ -57,7 +57,7 @@ this macro also adds a few options:
         minimap reconstructs its buffer. the mode
         varable is implicitly protected. notice,
         these variables are made unprotected when
-        the mode is disabled, regardless of wether
+        the mode is disabled, regardless of whether
         other modes are protecting them or not.
 :init-func
         form evaluated to set the mode varable to
