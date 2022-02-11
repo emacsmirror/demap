@@ -80,3 +80,10 @@ show windows in the same frame has it by using:
 
 Indicate When Active
 --------------------
+
+when the window the minimap is showing is not the active window, the current
+line and visible region overlays change face's from `demap-current-line-face`
+and `demap-visible-region-face` to `demap-current-line-inactive-face` and
+`demap-visible-region-inactive-face` respectfully. by defalt these new faces are
+the same has the usual ones, but these faces can be changed to have a visual
+indication on whether you are in the window the minimap is showing or not.
