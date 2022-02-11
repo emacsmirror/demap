@@ -45,28 +45,28 @@ That last screenshot has [Solaire-mode](https://github.com/hlissner/emacs-solair
 Usage
 -----
 
-You can do <kdb>M-x demap-minimap-toggle</kdb> to open and close the defalt minimap to the
+You can do `M-x demap-minimap-toggle` to open and close the defalt minimap to the
 side of the active frame. If you just want to make a standalone minimap buffer, do
-<kdb>M-x demap-minimap-construct</kdb>.
+`M-x demap-minimap-construct`.
 
 Configuration
 -------------
 
-The side and width of the window that <kdb>demap-minimap-toggle</kdb> opens to show the
-minimap can be set with the function <kdb>demap-set-open-options</kdb>. Using it can also
-fix problems with <kdb>display-buffer-alist</kdb> capturing minimap buffers.
+The side and width of the window that `demap-minimap-toggle` opens to show the
+minimap can be set with the function `demap-set-open-options`. Using it can also
+fix problems with `display-buffer-alist` capturing minimap buffers.
 
-Removing <kdb>demap-current-line-mode</kdb> or <kdb>demap-visible-region-mode</kdb> from the
-hook <kdb>demap-minimap-construct-hook</kdb> will disable the corresponding
-overlays.
+Removing `demap-current-line-mode` or `demap-visible-region-mode` from the
+hook `demap-minimap-construct-hook` will disable the corresponding
+overlays in new minimaps.
 
 ``` emacs-lisp
 (remove-hook 'demap-minimap-construct-hook 'demap-current-line-mode)
 (remove-hook 'demap-minimap-construct-hook 'demap-visible-region-mode)
 ```
 
-You can change what windows the minimap will show by setting the function in
-<kdb>demap-track-window-mode-update-p-func</kdb>. For example, you can make minimaps only
+You can change what windows minimaps can show by setting the function in
+`demap-track-window-mode-update-p-func`. For example, you can make minimaps only
 show windows in the same frame has it by using:
 
 ``` emacs-lisp
