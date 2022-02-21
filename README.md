@@ -17,7 +17,7 @@ That last screenshot has [Solaire-mode](https://github.com/hlissner/emacs-solair
 ``` emacs-lisp
 (setq doom-theme 'doom-one)
 (after! (solaire-mode demap)
-  (demap-set-open-options 'right 15)
+  (setq demap-minimap-window-width 15)
   (let ((gray1 "#1A1C22")
         (gray2 "#21242b")
         (gray3 "#282c34")
@@ -53,19 +53,15 @@ Configuration
 -------------
 
 The side and width of the window that `demap-minimap-toggle` opens to show the
-minimap can be set with the function `demap-set-open-options`. Using it can also
-fix problems with `display-buffer-alist` capturing minimap buffers.
-
-Removing `demap-current-line-mode` or `demap-visible-region-mode` from the
-hook `demap-minimap-construct-hook` will disable the corresponding
-overlays in new minimaps.
+minimap can be changed by setting the variables `demap-minimap-window-side` or
+`demap-minimap-window-width`. 
 
 ``` emacs-lisp
-(remove-hook 'demap-minimap-construct-hook 'demap-current-line-mode)
-(remove-hook 'demap-minimap-construct-hook 'demap-visible-region-mode)
+(setq demap-minimap-window-side  'left)
+(setq demap-minimap-window-width 15)
 ```
 
-You can change what windows minimaps can show by setting the function in
+You can change what windows a minimap can show by setting the function in
 `demap-track-window-mode-update-p-func`. For example, you can make minimaps only
 show windows in the same frame has it by using:
 
