@@ -61,10 +61,12 @@
 (defface demap-minimap-font-face
   '((t :family  "DejaVu Sans Mono" :height  30))
   "Face used for demap-minimap buffers."
+  :package-version '(demap . "1.0.0")
   :group 'demap)
 
 (defcustom demap-minimap-defalt-name "*Minimap*"
   "The defalt name for new demap-minimaps."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type 'string)
 
@@ -73,6 +75,7 @@
                                           demap-visible-region-mode )
   "Normal hook ran after construct a demap-minimap.
 this hook is ran has the buffer used by the new minimap."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type  'hook )
 
@@ -84,6 +87,7 @@ it will copy all protected variables to the new
 buffer then run this hook has the old buffer.
 the functions in this hook should take one argument
 \(MINIMAP). MINIMAP is the minimap that is changing."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type  'hook )
 
@@ -93,6 +97,7 @@ the functions in this hook should take one argument
 note that demap-minimap sometimes needs to rebuild
 its buffer. when this happens, `buffer-kill-hook'
 gets called but not this hook."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type  'hook )
 
@@ -104,6 +109,7 @@ the only reason to use this over
 marked has a permanent-local variable and it's
 local value is not cleared when demap-minimap
 rebuilds its buffer."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type  'hook )
 
@@ -112,6 +118,7 @@ rebuilds its buffer."
   "Normal hook ran when demap-minimap sets the window it is showing.
 the window demap-minimap is set to show can be got
 from `demap-current-minimap-window'."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type  'hook )
 
@@ -120,6 +127,7 @@ from `demap-current-minimap-window'."
   "Normal hook ran when demap-minimap rests.
 this is called when the window demap-minimap is
 showing is no longer active."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type  'hook )
 
@@ -132,6 +140,7 @@ demap-minimap rebuilds its buffer. use
 `demap-minimap-protect-variables' and
 `demap-minimap-unprotect-variables' to add and
 remove variables from this list."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :type  '(repeat variable) )
 

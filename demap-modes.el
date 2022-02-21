@@ -222,6 +222,7 @@ the rest of the arguments are passed to
 the function should accept no arguments. it should
 return nil if the current minimap should not show the
 selected window."
+  :package-version '(demap . "1.0.0")
   :type 'function
   :group 'demap )
 
@@ -234,6 +235,7 @@ window if `demap-track-window-mode-update-p-func'
 returns nil.
 
 this mode can only be used in a demap minimap buffer."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :init-func (progn
                (setf demap-track-window-mode t)
@@ -283,12 +285,14 @@ window then tell it to sleep."
   '((t (:inherit hl-line
         :extend  t )))
   "Face used to highlight the current line in demap-minimap."
+  :package-version '(demap . "1.0.0")
   :group 'demap )
 
 (defface demap-current-line-inactive-face
   '((t (:inherit demap-current-line-face
         :extend  t )))
   "Face used to highlight the current line in demap-minimap when not active."
+  :package-version '(demap . "1.0.0")
   :group 'demap )
 
 ;;;###autoload
@@ -300,6 +304,7 @@ highlight the line, or
 the current minimap is showing is not active.
 
 this mode can only be used in a demap minimap buffer."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :init-func (progn
                (setq demap-current-line-mode (make-overlay 0 0))
@@ -367,12 +372,14 @@ this mode can only be used in a demap minimap buffer."
   '((t (:inherit region
         :extend  t )))
   "Face used to highlight the visible region in demap-minimap."
+  :package-version '(demap . "1.0.0")
   :group 'demap )
 
 (defface demap-visible-region-inactive-face
   '((t (:inherit demap-visible-region-face
         :extend  t )))
   "Face used to highlight the visible region in demap-minimap when not active."
+  :package-version '(demap . "1.0.0")
   :group 'demap )
 
 ;;;###autoload
@@ -385,6 +392,7 @@ shown is active, the face
 `demap-visible-region-inactive-face' is used.
 
 this mode can only be used in a demap minimap buffer."
+  :package-version '(demap . "1.0.0")
   :group 'demap
   :init-func (progn
                (setq demap-visible-region-mode (make-overlay 0 0))

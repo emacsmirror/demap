@@ -42,17 +42,20 @@
   "Whether `demap-minimap-close' can kill minimap buffers.
 `demap-minimap-close' will only kill the minimap
 buffer if it is not in any other window."
+  :package-version '(demap . "1.0.0")
   :type  'boolean
   :group 'demap)
 
 (defcustom demap-minimap-window-side 'right
   "The side of the frame `demap-minimap-open' opens a window on."
+  :package-version '(demap . "1.0.0")
   :type  '(radio (const right)
                  (const left) )
   :group 'demap)
 
 (defcustom demap-minimap-window-width 20
   "The width of the window `demap-minimap-open' opens."
+  :package-version '(demap . "1.0.0")
   :type  'number
   :group 'demap)
 
@@ -72,7 +75,7 @@ frame or one of the fallowing:
     t        for any live frame,
     'visible for any visible frame,
     0        for any visible."
-  (interactive)
+  (interactive) ;TODO: option for different minimaps for ech frame.
   (let ((display-buffer-overriding-action `((display-buffer-in-side-window)
                                             (side          . ,demap-minimap-window-side)
                                             (window-width  . ,demap-minimap-window-width)
