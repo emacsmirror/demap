@@ -98,9 +98,9 @@ the rest of the arguments are passed to
         (construct-variable t);variable
         (getter    mode)
         (setter    `(setf ,mode))
-        oof
+        func
         after-hook
-        (restr     '())
+        (rest     '())
 
         (protect   '())
         init-func
@@ -123,86 +123,95 @@ the rest of the arguments are passed to
           (:init-value (setq init-value val))
           (:lighter    (setq lighter    val))
           (:keymap     (setq keymap     val))
-          (:variable   (let (tmp)
-                         (setq construct-variable nil)
-                         (if (and (setq tmp (cdr-safe val))
-                                  (or (symbolp tmp)
-                                      (functionp tmp) ))
-                             (setq getter (car val)
-                                   setter `(funcall #',tmp) )
-                           (setq getter val
-                                 setter `(setf ,val) ))))
           (:after-hook (setq after-hook val))
+          (:variable
+           (setq construct-variable nil)
+           (let ((cdr-val (cdr-safe val)))
+             (if (and cdr-val
+                      (or (symbolp cdr-val)
+                          (functionp cdr-val) ))
+                 (setq getter (car val)
+                       setter `(funcall #',cdr-val) )
+               (setq getter val
+                     setter `(setf ,val) ))))
           ;;new
-          (:protect    (if (symbolp val)
-                           (push `',val protect)
-                         (--> (mapcar (lambda(x) `',x) val)
-                              (append it protect)
-                              (setq protect it) )))
           (:init-func  (setq init-func  val))
           (:kill-func  (setq kill-func  val))
           (:set-func   (setq set-func   val))
+          (:protect
+           (if (symbolp val)
+               (push `',val protect)
+             (--> (mapcar (lambda(x) `',x) val)
+                  (append it protect)
+                  (setq protect it) )))
           ;;rest
-          (_           (--> (list val key)
-                            (append it restr)
-                            (setq restr it) )))))
+          (_
+           (--> (list val key)
+                (append it rest)
+                (setq rest it) )))))
     ;;set defalts
-    (setq restr (nreverse restr)
-          init-func  (or init-func `(,@setter t  ))
-          kill-func  (or kill-func `(,@setter nil))
-          set-func   (--> (or set-func
-                              (let ((state-var (make-symbol "-state")))
-                                `(lambda(,state-var)
-                                   (if ,state-var
-                                       ,init-func
-                                     ,kill-func ))))
-                          (if (symbolp it)
-                              `(,it)
-                            `(funcall ,it) )))
+    (setq rest (nreverse rest))
     (when (and construct-variable (not globalp))
       (push `',mode protect) )
-    (setq oof (let ((error-msg "%s can only be used in a demap-minimap buffer")
-                    (kill-hook 'demap-minimap-kill-hook)
-                    (kill-func `(lambda()
-                                  (,mode 0) ))
-                    (chng-hook 'demap-minimap-change-major-mode-hook)
-                    (chng-func `(lambda()
-                                  (unless (get ',mode 'permanent-local)
-                                    (,mode 0) ))))
-                `(lambda(state)
-                   (cl-assert (demap-buffer-minimap) nil ,error-msg ',mode)
-                   (when (xor state ,getter)
-                     (,@set-func state)
-                     ;;if varable did change
-                     (unless (xor state ,getter)
-                       (if state
-                           (progn
-                             (demap-minimap-protect-variables t ,@protect)
-                             (add-hook ',kill-hook ',kill-func nil t)
-                             (add-hook ',chng-hook ',chng-func nil t) )
-                         (demap-minimap-unprotect-variables t ,@protect)
-                         (remove-hook ',kill-hook ',kill-func t)
-                         (remove-hook ',chng-hook ',chng-func t) ))))))
+    (when (and globalp construct-variable)
+      (->> `(progn
+              (when (called-interactively-p 'any)
+                (customize-mark-as-set ',mode) )
+              ,@(when after-hook
+                  `(,after-hook) ))
+           (setq after-hook) ))
+    (--> (or set-func
+             (let ((state-var (make-symbol "-state")))
+               `(lambda(,state-var)
+                  (if ,state-var
+                      ,(or init-func `(,@setter t  ))
+                    ,(or kill-func `(,@setter nil)) ))))
+         (if (symbolp it)
+             `(,it)
+           `(funcall ,it) )
+         (setq set-func it) )
+    (->> (let ((state-var (make-symbol "-state"))
+               (error-msg "%s can only be used in a demap-minimap buffer")
+               (kill-hook 'demap-minimap-kill-hook)
+               (chng-hook 'demap-minimap-change-major-mode-hook)
+               (kill-func `(lambda()
+                             (,mode 0) ))
+               (chng-func `(lambda()
+                             (unless (get ',mode 'permanent-local)
+                               (,mode 0) ))))
+           `(lambda(,state-var)
+              (cl-assert (demap-buffer-minimap) nil ,error-msg ',mode)
+              (when (xor ,state-var ,getter)
+                (,@set-func ,state-var)
+                ;;if varable did change
+                (unless (xor ,state-var ,getter)
+                  (if ,state-var
+                      (progn
+                        (demap-minimap-protect-variables t ,@protect)
+                        (add-hook ',kill-hook ',kill-func nil t)
+                        (add-hook ',chng-hook ',chng-func nil t) )
+                    (demap-minimap-unprotect-variables t ,@protect)
+                    (remove-hook ',kill-hook ',kill-func t)
+                    (remove-hook ',chng-hook ',chng-func t) )))))
+         (setq func))
     ;;construct
     `(progn
        ;;variable
        ,@(when construct-variable
            `((demap--tools-define-mode-var ,mode ,init-value
-                                     ,globalp ,(and body t) nil
-                                     ,@restr )))
+                                           ,globalp ,(and body t) nil
+                                           ,@rest )))
        ;;function
        (define-minor-mode ,mode
          ,doc
          ,init-value
          ,lighter
          ,keymap
-         :global     ,globalp
-         :after-hook (,@(when (and globalp construct-variable)
-                          `((when (called-interactively-p 'any)
-                              (customize-mark-as-set ',mode) )))
-                      ,@after-hook)
-         :variable (,getter . ,oof)
-         ,@restr
+         ,@(when after-hook
+             `(:after-hook ,after-hook) )
+         :global ,globalp
+         :variable (,getter . ,func)
+         ,@rest
          ,@body ))))
 
 ;;;track-window-mode
