@@ -73,9 +73,9 @@ frame or one of the fallowing:
     'visible for any visible frame,
     0        for any visible."
   (interactive)
-  (let ((display-buffer-overriding-action '((display-buffer-in-side-window)
-                                            (side          . demap-minimap-window-side)
-                                            (window-width  . demap-minimap-window-width)
+  (let ((display-buffer-overriding-action `((display-buffer-in-side-window)
+                                            (side          . ,demap-minimap-window-side)
+                                            (window-width  . ,demap-minimap-window-width)
                                             (preserve-size . (t . nil)) )))
     (-> (or minimap-or-name
             (get-buffer demap-minimap-defalt-name)
