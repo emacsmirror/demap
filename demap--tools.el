@@ -24,7 +24,7 @@
 
 (eval-when-compile
   (when (>= emacs-major-version 28)
-    ;window.el doesn't provide 'window before version 28
+                                        ;window.el doesn't provide 'window before version 28
     (require 'window) ))
 
 (require 'dash)
@@ -32,7 +32,7 @@
 ;;define
 
 (defvar demap--tools-demap-defined-start-p nil
-  "Whether demap.el has started loading.")
+  "Whether demap.el has started loading." )
 
 (defun demap--tools-define-demap-start()
   "Mark that demap.el has started loading."
@@ -167,12 +167,13 @@ returns the value of STEP in the first spec.
 see `dolist'.
 
 \(fn ((VAR LIST [STEP])...) BODY...)"
+  (declare (indent 1))
   (unless (listp specs)
-    (signal 'wrong-type-argument (list 'consp specs)))
+    (signal 'wrong-type-argument (list 'consp specs)) )
   (unless (<= 1 (length specs))
-    (signal 'wrong-number-of-arguments (list 1 (length specs))))
+    (signal 'wrong-number-of-arguments (list 1 (length specs))) )
   `(demap--tools-dolists-unsafe ,specs
-     ,@body))
+     ,@body ))
 
 ;;hooks
 
@@ -187,8 +188,8 @@ functions. functions already in hook are not added.
 
 DEPTH and LOCAL are passed to `add-hook'."
   (demap--tools-dolists ((hook hooks)
-                   (func funcs) )
-    (demap--tools-add-hook hook func depth local)))
+                         (func funcs) )
+    (demap--tools-add-hook hook func depth local) ))
 
 (defun demap--tools-remove-hooks(hooks funcs &optional local)
   "Remove FUNCS from the value of HOOKS.
@@ -200,7 +201,7 @@ skipped.
 if LOCAL is non-nil then HOOKS are buffer local.
 see `remove-hook'."
   (demap--tools-dolists ((hook hooks)
-                   (func funcs) )
+                         (func funcs) )
     (demap--tools-remove-hook hook func local) ))
 
 (defun demap--tools-smart-add-hook(hook func &optional depth local)
@@ -311,15 +312,15 @@ Use the command `%s' to change this variable." ))
       (setq mode-func        (or mode-func
                                  var )
             mode-pretty-name (or mode-pretty-name
-                                 mode-func ));TODO: real pretty name
+                                 mode-func ));TODO: set to a real pretty name
       (if globalp
           (concat (format doc-g1 mode-pretty-name mode-func)
                   (when funcp (format doc-g2 mode-func)) )
         (format doc-local mode-pretty-name mode-func) ))))
 
 (defmacro demap--tools-define-mode-var(var init-value
-                                       &optional globalp funcp doc
-                                       &rest args )
+                                           &optional globalp funcp doc
+                                           &rest args )
   "Define a variable VAR the same way define-miner-mode would.
 INIT-VALUE defalt value.
 GLOBALP    is wether the varable is global or local by defalt.

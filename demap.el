@@ -44,20 +44,20 @@
 buffer if it is not in any other window."
   :package-version '(demap . "1.0.0")
   :type  'boolean
-  :group 'demap)
+  :group 'demap )
 
 (defcustom demap-minimap-window-side 'right
   "The side of the frame `demap-minimap-open' opens a window on."
   :package-version '(demap . "1.0.0")
   :type  '(radio (const right)
                  (const left) )
-  :group 'demap)
+  :group 'demap )
 
 (defcustom demap-minimap-window-width 20
   "The width of the window `demap-minimap-open' opens."
   :package-version '(demap . "1.0.0")
   :type  'number
-  :group 'demap)
+  :group 'demap )
 
 ;;;###autoload
 (defun demap-minimap-open(&optional minimap-or-name frame)

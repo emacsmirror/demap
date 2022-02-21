@@ -90,17 +90,23 @@ the rest of the arguments are passed to
 
 \(fn MODE DOC &optional INIT-VALUE LIGHTER KEYMAP &rest BODY)"
   (declare (doc-string 2)
-           (indent     1))
+           (indent     1)
+           (debug (&define name string-or-null-p
+                   [&optional [&not keywordp] sexp
+                    &optional [&not keywordp] sexp
+                    &optional [&not keywordp] sexp ]
+                   [&rest [keywordp sexp]]
+                   def-body )))
   (let (globalp
         init-value
         lighter
         keymap
-        (construct-variable t);variable
+        (construct-variable t)
         (getter    mode)
         (setter    `(setf ,mode))
         func
         after-hook
-        (rest     '())
+        (rest      '())
 
         (protect   '())
         init-func
@@ -149,7 +155,6 @@ the rest of the arguments are passed to
            (--> (list val key)
                 (append it rest)
                 (setq rest it) )))))
-    ;;set defalts
     (setq rest (nreverse rest))
     (when (and construct-variable (not globalp))
       (push `',mode protect) )
@@ -183,7 +188,6 @@ the rest of the arguments are passed to
               (cl-assert (demap-buffer-minimap) nil ,error-msg ',mode)
               (when (xor ,state-var ,getter)
                 (,@set-func ,state-var)
-                ;;if varable did change
                 (unless (xor ,state-var ,getter)
                   (if ,state-var
                       (progn
@@ -193,15 +197,12 @@ the rest of the arguments are passed to
                     (demap-minimap-unprotect-variables t ,@protect)
                     (remove-hook ',kill-hook ',kill-func t)
                     (remove-hook ',chng-hook ',chng-func t) )))))
-         (setq func))
-    ;;construct
+         (setq func) )
     `(progn
-       ;;variable
        ,@(when construct-variable
            `((demap--tools-define-mode-var ,mode ,init-value
                                            ,globalp ,(and body t) nil
                                            ,@rest )))
-       ;;function
        (define-minor-mode ,mode
          ,doc
          ,init-value
@@ -246,7 +247,7 @@ this mode can only be used in a demap minimap buffer."
                (->> (demap-buffer-minimap)
                     (apply-partially #'demap-track-window-mode-update-as)
                     (remove-hook 'window-state-change-hook) )
-               (kill-local-variable 'demap-track-window-mode) ) )
+               (kill-local-variable 'demap-track-window-mode) ))
 
 ;;track-window-mode update
 
@@ -312,7 +313,6 @@ this mode can only be used in a demap minimap buffer."
                       (add-hook 'demap-minimap-window-set-hook   func nil t) )
                (-as-> #'demap--current-line-mode-sleep func
                       (add-hook 'demap-minimap-window-sleep-hook func nil t) ))
-
   :kill-func (progn
                (demap--current-line-mode-sleep)
                (delete-overlay demap-current-line-mode)
@@ -419,6 +419,7 @@ returns true if the current minimap is showing the active window."
          (eq (demap--tools-real-buffer (window-buffer window))
              (demap-minimap-showing) ))))
 
+;;TODO: rerender minimap when changeing on a diffrent frame
 (defun demap--visible-region-mode-update()
   "Update the position of demap-visible-region-mode's overlay.
 minimap will scroll if overlay goes off screen."
@@ -449,7 +450,7 @@ IGNORED is ignored for function hooks."
 if MINIMAP is not showing WINDOW then nuthing happens.
 IGNORED is ignored for function hooks."
   (ignore ignored)
-  (when (eq window (demap-minimap-window minimap) )
+  (when (eq window (demap-minimap-window minimap))
     (with-current-buffer (demap-minimap-buffer minimap)
       (demap--visible-region-mode-update) )))
 
@@ -493,5 +494,5 @@ set face and remove hooks that update overlay."
 
 (provide 'demap-modes)
 (demap--tools-define-partof-demap)
-;(provide 'demap)
+                                        ;(provide 'demap)
 ;;; demap-modes.el ends here
