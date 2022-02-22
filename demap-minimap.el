@@ -324,6 +324,7 @@ to set `demap-minimap-window' instead when appropriate."
     (when (demap-minimap-live-p minimap)
       (buffer-base-buffer (demap-minimap--buffer minimap)) )))
 
+;;TODO: collor entire buffer when showing for the first time
 (defun demap-minimap-showing-set-unchecked(minimap &optional buffer)
   "Set the buffer that MINIMAP is showing to BUFFER.
 Version of (`demap-minimap-showing-set' MINIMAP BUFFER)

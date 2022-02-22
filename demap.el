@@ -75,7 +75,7 @@ frame or one of the fallowing:
     t        for any live frame,
     'visible for any visible frame,
     0        for any visible."
-  (interactive) ;TODO: option for different minimaps for ech frame.
+  (interactive) ;TODO: option for different minimaps for ech frame, window or buffer.
   (let ((display-buffer-overriding-action `((display-buffer-in-side-window)
                                             (side          . ,demap-minimap-window-side)
                                             (window-width  . ,demap-minimap-window-width)
