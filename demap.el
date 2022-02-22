@@ -1,16 +1,29 @@
 ;;; demap.el --- Detachable minimap package -*- lexical-binding: t; -*-
 ;;
-;; Copyright (C) 2021 Sawyer Gardner
+;; Copyright (C) 2022 Sawyer Gardner
 ;;
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: November 25, 2021
-;; Modified: February 04, 2022
+;; Modified: February 22, 2022
 ;; Version: 1.0.0
 ;; Keywords: lisp tools convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
 ;;
 ;; This file is not part of GNU Emacs.
+;;
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ;;
 ;;; Commentary:
 ;;
@@ -23,8 +36,8 @@
 ;;      active window.
 ;; - support for multiple minimap buffer, with there own buffer local definitions
 ;;      on what buffers it can show and how to show them.
-;; - person preference, having the minimap on the side of the frame rather
-;;      then on the side of the active window.
+;; - person preference, but having the minimap on the side of the frame rather
+;;      then on the side of the active window by defalt.
 ;;
 ;; see the README for more information on the demap package and customization
 ;; options.
