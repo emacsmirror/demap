@@ -48,13 +48,15 @@
   "Whether demap.el has started loading." )
 
 (defun demap--tools-define-demap-start()
-  "Mark that demap.el has started loading."
+  "Mark that demap.el has started loading.
+for use with `demap--tools-define-partof-demap'."
   (setq demap--tools-demap-defined-start-p t) )
 
 (defun demap--tools-define-partof-demap()
   "Define this file has part of demap.
 load demap.el if it hasn't start loading yet. meant
-to be put at the end of files."
+to be put at the end of files. this exists so that
+if this file is autoloaded, also load demap.el"
   (unless demap--tools-demap-defined-start-p
     (require 'demap) ))
 

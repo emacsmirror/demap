@@ -89,10 +89,11 @@ frame or one of the fallowing:
     'visible for any visible frame,
     0        for any visible."
   (interactive) ;TODO: option for different minimaps for ech frame, window or buffer.
-  (let ((display-buffer-overriding-action `((display-buffer-in-side-window)
-                                            (side          . ,demap-minimap-window-side)
-                                            (window-width  . ,demap-minimap-window-width)
-                                            (preserve-size . (t . nil)) )))
+  (let ((display-buffer-overriding-action
+         `((display-buffer-in-side-window)
+           (side          . ,demap-minimap-window-side)
+           (window-width  . ,demap-minimap-window-width)
+           (preserve-size . (t . nil)) )))
     (-> (or minimap-or-name
             (get-buffer demap-minimap-defalt-name)
             (demap-minimap-construct) )
