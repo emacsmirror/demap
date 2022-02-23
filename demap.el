@@ -131,7 +131,8 @@ if a window is removed returns t, otherwise nil."
     (cl-dolist (window (get-buffer-window-list minimap-buffer nil frame) nil)
       (when (demap--tools-side-window-p window)
         (delete-window window)
-        (when (and demap-minimap-close-kill-minimap-p
+        (when (and (-> 'demap-minimap-close-kill-minimap-p
+                       (buffer-local-value minimap-buffer) )
                    (not (get-buffer-window minimap-buffer t)) )
           (kill-buffer minimap-buffer) )
         (cl-return t) ))))
