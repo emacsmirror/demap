@@ -1,4 +1,4 @@
-;;; demap--tools.el --- Private tools used by the demap package -*- lexical-binding: t; -*-
+;;; demap-tools.el --- Private tools used by the demap package -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2022 Sawyer Gardner
 ;;
@@ -228,8 +228,8 @@ DEPTH and LOCAL are passed to `add-hook'."
   (demap--tools-add-hook hook func depth local)
   (if local
       (->> (current-buffer)
-           (apply-partially 'demap--tools-remove-hook-local hook func) )
-    (apply-partially 'demap--tools-remove-hook hook func) ))
+           (apply-partially #'demap--tools-remove-hook-local hook func) )
+    (apply-partially #'demap--tools-remove-hook hook func) ))
 
 (defun demap--tools-smart-add-hooks(hooks funcs &optional depth local)
   "Add to the values of HOOKS the functions FUNCS and return a cleanup function.
@@ -244,8 +244,8 @@ DEPTH and LOCAL are passed to `add-hook'."
   (demap--tools-add-hooks hooks funcs depth local)
   (if local
       (->> (current-buffer)
-           (apply-partially 'demap--tools-remove-hooks-local hooks funcs) )
-    (apply-partially 'demap--tools-remove-hooks hooks funcs) ))
+           (apply-partially #'demap--tools-remove-hooks-local hooks funcs) )
+    (apply-partially #'demap--tools-remove-hooks hooks funcs) ))
 
 
 (defun demap--tools-add-hook-local(hook func &optional depth buffer)
