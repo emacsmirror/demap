@@ -254,8 +254,8 @@ If BUFFER-OR-NAME is not associated with a minimap then it returns nil."
   "Make it so the buffer MINIMAP is showing can not accidentally kill MINIMAP.
 without this, killing the buffer that MINIMAP is showing will kill MINIMAP.
 this will make MINIMAP change to a blank buffer instead."
-                                        ;TODO: fix this. can cause problems if the base
-                                        ;buffer is killed in demap-minimap-change-hook
+  ;;FIXME: can cause problems if the base
+  ;;buffer is killed in demap-minimap-change-hook
   (-when-let* ((showing (demap-minimap-showing minimap))
                (buffer  (demap-minimap--buffer  minimap)) )
     (--> (apply-partially #'demap-minimap-showing-set minimap nil)

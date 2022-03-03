@@ -367,5 +367,6 @@ ARGS       arguments, see `define-miner-mode'."
 
 
 
-(provide 'demap--tools)
-;;; demap--tools.el ends here
+(provide 'demap-tools)
+;;(provide 'demap)
+;;; demap-tools.el ends here
