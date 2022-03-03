@@ -19,7 +19,7 @@ REQUIRES      = $(shell grep -soP -m 1 "(?<=^;; Package-Requires: ).*(?=$$)" $(P
 OUT_FILE_NAME = $(PROJECT)-$(VERSION)
 OUT_FILE      = $(BUILD_DIR)/$(OUT_FILE_NAME).tar
 PKG_FILE      = $(BUILD_DIR)/$(PROJECT)-pkg.el
-FILES         = $(PROJECT_EL) demap-minimap.el demap--tools.el demap-modes.el
+FILES         = $(PROJECT_EL) demap-minimap.el demap-tools.el demap-modes.el
 
 all: $(OUT_FILE)
 
