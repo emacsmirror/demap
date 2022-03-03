@@ -5,7 +5,7 @@
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: November 25, 2021
 ;; Modified: February 22, 2022
-;; Version: 1.0.1
+;; Version: 1.0.2
 ;; Keywords: lisp tools convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
