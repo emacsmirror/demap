@@ -58,7 +58,7 @@
 ;;
 ;;; Code:
 
-(require 'demap--tools)
+(require 'demap-tools)
 (require 'dash)
 
 (eval-when-compile

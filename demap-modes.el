@@ -47,7 +47,7 @@
 ;;
 ;;; Code:
 
-(require 'demap--tools)
+(require 'demap-tools)
 (require 'demap-minimap)
 (require 'dash)
 (require 'cl-lib)

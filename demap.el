@@ -44,7 +44,7 @@
 ;;
 ;;; Code:
 
-(require 'demap--tools)
+(require 'demap-tools)
 (demap--tools-define-demap-start)
 (require 'demap-minimap)
 (require 'demap-modes)
