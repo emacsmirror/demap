@@ -32,12 +32,12 @@
 ;; `demap-minimap-toggle'.
 ;;
 ;; this package has a few advantages over other minimap packages.
-;; - support for detaching minimaps and having them on a diffrent frames then the
+;; - support for detaching minimaps and having them on a different frames then the
 ;;      active window.
 ;; - support for multiple minimap buffer, with there own buffer local definitions
 ;;      on what buffers it can show and how to show them.
 ;; - person preference, but having the minimap on the side of the frame rather
-;;      then on the side of the active window by defalt.
+;;      then on the side of the active window by default.
 ;;
 ;; see the README for more information on the demap package and customization
 ;; options.
@@ -77,9 +77,9 @@ buffer if it is not in any other window."
   "Open minimap in a side window.
 makes a minimap buffer and shows it. if
 MINIMAP-OR-NAME is non-nil or a minimap with the
-name in `demap-minimap-defalt-name' exists, show
+name in `demap-minimap-default-name' exists, show
 that minimap instead. if the minimap is already
-being shown, nuthing happens.
+being shown, nothing happens.
 
 FRAME specifies what frame to look for windows
 that already show the minimap. it should be a live
@@ -88,14 +88,14 @@ frame or one of the fallowing:
     t        for any live frame,
     'visible for any visible frame,
     0        for any visible."
-  (interactive) ;TODO: option for different minimaps for ech frame, window or buffer.
+  (interactive) ;TODO: option for different minimaps for each frame, window or buffer.
   (let ((display-buffer-overriding-action
          `((display-buffer-in-side-window)
            (side          . ,demap-minimap-window-side)
            (window-width  . ,demap-minimap-window-width)
            (preserve-size . (t . nil)) )))
     (-> (or minimap-or-name
-            (get-buffer demap-minimap-defalt-name)
+            (get-buffer demap-minimap-default-name)
             (demap-minimap-construct) )
         (demap-normalize-minimap)
         (demap-minimap-buffer)
@@ -108,7 +108,7 @@ close a side window showing MINIMAP-OR-NAME. has no
 effect on normal windows showing MINIMAP-OR-NAME.
 
 a side window is a window made by
-`display-buffer-in-side-window' (the defalt method
+`display-buffer-in-side-window' (the default method
 used by `demap-minimap-open').
 
 FRAME specifies what frame to look for side windows
@@ -126,7 +126,7 @@ if a window is removed returns t, otherwise nil."
   (interactive)
   (-when-let (minimap-buffer (ignore-errors
                                (-> (or minimap-or-name
-                                       demap-minimap-defalt-name )
+                                       demap-minimap-default-name )
                                    (demap-normalize-minimap)
                                    (demap-minimap--buffer) )))
     (cl-dolist (window (get-buffer-window-list minimap-buffer nil frame) nil)

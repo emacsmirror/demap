@@ -65,32 +65,32 @@ demap minimap buffer.
 
 this macro also adds a few options:
 :protect
-        varable or list of variables to copy when
+        variable or list of variables to copy when
         minimap reconstructs its buffer. the mode
-        varable is implicitly protected. notice,
+        variable is implicitly protected. notice,
         these variables are made unprotected when
         the mode is disabled, regardless of whether
         other modes are protecting them or not.
 :init-func
-        form evaluated to set the mode varable to
+        form evaluated to set the mode variable to
         true. can also be used to initialize any
         hooks used by this mode. if this form dose
-        not set the mode varable to a non-nil
+        not set the mode variable to a non-nil
         value, then the mode is still considered
         disabled. this will not be called while the
         mode is active.
 :kill-func
-        form evaluated to set the mode varable to
-        nil. can also be used to uninitialize any
+        form evaluated to set the mode variable to
+        nil. can also be used to uninitialized any
         hooks used by this mode. this form is also
         evaluated if the mode is active when the
         buffer is killed. if this dose not set the
-        mode varable to nil then the mode is
+        mode variable to nil then the mode is
         considered still activated. this will not
         be called while the mode is not active.
 :set-func
         a function that sets the value of the mode
-        varable. this option overrides :init-func
+        variable. this option overrides :init-func
         and :kill-func. it should be a function
         that accepts one argument (STATE). STATE is
         the state that the mode variable should be
@@ -230,8 +230,8 @@ the rest of the arguments are passed to
 ;;;track-window-mode
 
 (defcustom demap-track-window-mode-update-p-func
-  #'demap-track-window-mode-update-p-func-defalt
-  "Function to determin if demap-minimap should show the selected window.
+  #'demap-track-window-mode-update-p-func-default
+  "Function to determine if demap-minimap should show the selected window.
 the function should accept no arguments. it should
 return nil if the current minimap should not show the
 selected window."
@@ -263,15 +263,15 @@ this mode can only be used in a demap minimap buffer."
 
 ;;track-window-mode update
 
-(defun demap-track-window-mode-update-p-func-defalt()
-  "Determin if track-w mode can fallow the active window.
-defalt value for `demap-track-window-mode-update-p-func'.
+(defun demap-track-window-mode-update-p-func-default()
+  "Determine if track-w mode can fallow the active window.
+default value for `demap-track-window-mode-update-p-func'.
 returns nil if the active window's buffer is not a
 file buffer."
   (buffer-file-name (window-buffer)) )
 
 (defun demap-track-window-mode-update-p-func-any()
-  "Determin if track-w mode can fallow the active window.
+  "Determine if track-w mode can fallow the active window.
 meant to be a value for `demap-track-window-mode-update-p-func'.
 returns true for nearly any window, ignoring other minimaps"
   (not (demap-buffer-minimap)) )
@@ -424,14 +424,14 @@ this mode can only be used in a demap minimap buffer."
 ;;visible-region-mode update
 
 (defun demap--visible-region-made-active-p()
-  "Determin if `demap-visible-region-mode' should be active or not.
+  "Determine if `demap-visible-region-mode' should be active or not.
 returns true if the current minimap is showing the active window."
   (let ((window  (demap-current-minimap-window)))
     (and (window-live-p window)
          (eq (demap--tools-real-buffer (window-buffer window))
              (demap-minimap-showing) ))))
 
-;;TODO: rerender minimap when changeing on a diffrent frame
+;;TODO: re-render minimap when changing on a different frame
 (defun demap--visible-region-mode-update()
   "Update the position of `demap-visible-region-mode''s overlay.
 minimap will scroll if overlay goes off screen."
@@ -459,7 +459,7 @@ IGNORED is ignored for function hooks."
 
 (defun demap--visible-region-mode-update-window-as(minimap window &rest ignored)
   "Update the position of `demap-visible-region-mode''s overlay in MINIMAP.
-if MINIMAP is not showing WINDOW then nuthing happens.
+if MINIMAP is not showing WINDOW then nothing happens.
 IGNORED is ignored for function hooks."
   (ignore ignored)
   (when (eq window (demap-minimap-window minimap))

@@ -28,7 +28,7 @@
 ;;
 ;; this file contains general purpose functions used by demap.el.
 ;; these functions are made so that at some point, they can be replace with
-;; external packages or future implamentations of EMACS, and are not specialized
+;; external packages or future implementations of EMACS, and are not specialized
 ;; to the demap package. everything defined here is still private and should not
 ;; be loaded or used outside of the demap package.
 ;;
@@ -55,7 +55,7 @@ for use with `demap--tools-define-partof-demap'."
   "Define this file has part of demap.
 load demap.el if it hasn't start loading yet. meant
 to be put at the end of files. this exists so that
-if this file is autoloaded, also load demap.el"
+if this file is auto-loaded, also load demap.el"
   (unless demap--tools-demap-defined-start-p
     (require 'demap) ))
 
@@ -104,7 +104,7 @@ see `buffer-base-buffer'."
 
 (defun demap--tools-copy-local-variable(variable from-buffer to-buffer)
   "Copy the buffer-local value of VARIABLE in FROM-BUFFER to TO-BUFFER.
-if VARABLE is not buffer local in FROM-BUFFER, then
+if VARIABLE is not buffer local in FROM-BUFFER, then
 it will no longer be buffer local in TO-BUFFER."
   (setq from-buffer (or from-buffer (current-buffer))
         to-buffer   (or to-buffer   (current-buffer)) )
@@ -115,7 +115,7 @@ it will no longer be buffer local in TO-BUFFER."
       (kill-local-variable variable) )))
 
 (defun demap--tools-list-p(obj)
-  "Determin if OBJ is a list.
+  "Determine if OBJ is a list.
 if OBJ is a list and not a lambda or nil, return t,
 otherwise nil."
   (and obj
@@ -309,10 +309,10 @@ DEPTH is passed to `add-hook'."
                                               &optional globalp funcp
                                               mode-func mode-pretty-name )
     "Return the documentation that define-miner-mode would give to a mode var.
-VAR       is the varable symbol.
-GLOBALP   is wether the varable is global or local by defalt.
+VAR       is the variable symbol.
+GLOBALP   is wether the variable is global or local by default.
 FUNCP     is wether the variable should be set by a function.
-MODE-FUNC is the function to set VAR (defalts to VAR).
+MODE-FUNC is the function to set VAR (defaults to VAR).
 MODE-PRETTY-NAME is the pretty version of the mode's name."
     (let ((doc-g1 "Non-nil if %s is enabled.
 See the `%s' command
@@ -336,8 +336,8 @@ Use the command `%s' to change this variable." ))
                                            &optional globalp funcp doc
                                            &rest args )
   "Define a variable VAR the same way define-miner-mode would.
-INIT-VALUE defalt value.
-GLOBALP    is wether the varable is global or local by defalt.
+INIT-VALUE default value.
+GLOBALP    is wether the variable is global or local by default.
 FUNCP      is wether the variable should be set by a function.
 DOC        if not nil, override generated documentation.
 ARGS       arguments, see `define-miner-mode'."

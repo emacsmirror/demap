@@ -26,7 +26,7 @@
 ;;
 ;;; Commentary:
 ;;
-;; this file contains the core of demap.el's implamentation. this includes the
+;; this file contains the core of demap.el's implementation. this includes the
 ;; definitions for the minimap object, buffer, custom variables, faces, and
 ;; hooks. wile there is little here meant for the 'user' to care about (besides
 ;; of the faces or custom variables), custom modes or external packages can use
@@ -76,8 +76,8 @@
   :package-version '(demap . "1.0.0")
   :group 'demap )
 
-(defcustom demap-minimap-defalt-name "*Minimap*"
-  "The defalt name for new demap-minimaps."
+(defcustom demap-minimap-default-name "*Minimap*"
+  "The default name for new demap-minimaps."
   :package-version '(demap . "1.0.0")
   :group 'demap
   :type 'string )
@@ -200,7 +200,7 @@ current buffer's minimap."
   "Copy the current buffers protected variables to NEW-BUFFER.
 the protected variables are the ones listed in
 `demap-minimap-protected-variables' along with a
-few hardcoded ones."
+few hard coded ones."
   (dolist (v (list 'demap-minimap-change-functions
                    'demap-minimap-kill-hook
                    'demap-minimap-window-set-hook
@@ -228,7 +228,7 @@ buffer is a demap-minimap buffer."
 (defun demap-minimap-unprotect-variables(local &rest vars)
   "Remove VARS from the list of protected variables.
 protected variables are listed in `demap-minimap-protected-variables'.
-if VARS are not present then nuthing happens.
+if VARS are not present then nothing happens.
 
 if LOCAL is non-nil then VARS are removed from the
 buffer-local value of `demap-minimap-protected-variables'.
@@ -263,10 +263,10 @@ this will make MINIMAP change to a blank buffer instead."
 
 (defun demap--minimap-buffer-construct(&optional name show)
   "Construct a buffer that demap-minimap can use, using NAME and showing SHOW.
-name defalts to `demap-minimap-defalt-name' and show
-defalts to a blank buffer."
+name defaults to `demap-minimap-default-name' and show
+defaults to a blank buffer."
   (-as-> name buffer
-         (or buffer demap-minimap-defalt-name)
+         (or buffer demap-minimap-default-name)
          (generate-new-buffer-name buffer)
          (if show
              (make-indirect-buffer show buffer)
@@ -336,7 +336,7 @@ to set `demap-minimap-window' instead when appropriate."
     (when (demap-minimap-live-p minimap)
       (buffer-base-buffer (demap-minimap--buffer minimap)) )))
 
-;;TODO: collor entire buffer when showing for the first time
+;;TODO: color entire buffer when showing for the first time
 (defun demap-minimap-showing-set-unchecked(minimap &optional buffer)
   "Set the buffer that MINIMAP is showing to BUFFER.
 Version of (`demap-minimap-showing-set' MINIMAP BUFFER)
@@ -352,7 +352,7 @@ buffer."
   "Set the buffer that minimap MINIMAP-OR-NAME is showing to BUFFER-OR-NAME.
 if BUFFER-OR-NAME is nil, then MINIMAP-OR-NAME will
 show a blank buffer. if BUFFER-OR-NAME is already
-being shown, nuthing happens.
+being shown, nothing happens.
 this is equivalent to
 \(setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-NAME)"
   (let ((minimap (demap-normalize-minimap minimap-or-name))
@@ -372,13 +372,13 @@ this is equivalent to
 (defun demap-minimap-construct(&optional name showing)
   "Construct a minimap.
 NAME    is the name of the buffer.
-        defalts to `demap-minimap-defalt-name'.
+        defaults to `demap-minimap-default-name'.
 SHOWING is the buffer that the minimap is showing.
-        defalts to a blank buffer."
+        defaults to a blank buffer."
   (interactive (list (read-string
                       (format "Construct minimap (minimap name) (deflat %s): "
-                              demap-minimap-defalt-name )
-                      nil nil demap-minimap-defalt-name )
+                              demap-minimap-default-name )
+                      nil nil demap-minimap-default-name )
                      nil ))
   (let ((minimap (demap--minimap-construct))
         (buffer  (demap--minimap-buffer-construct name showing)) )

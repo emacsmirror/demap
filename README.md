@@ -9,7 +9,7 @@ buffer.
 Screenshots
 -----------
 
-![Demap in defalt theme](https://drive.google.com/uc?export=view&id=1BewWlI9-GsihrRZzMpgY54iLu9SrWUVc) | ![Demap in darker blue theme](https://drive.google.com/uc?export=view&id=15wQ8ReWQM7h0ROxHaEV8C277IPwN1axw)
+![Demap in default theme](https://drive.google.com/uc?export=view&id=1BewWlI9-GsihrRZzMpgY54iLu9SrWUVc) | ![Demap in darker blue theme](https://drive.google.com/uc?export=view&id=15wQ8ReWQM7h0ROxHaEV8C277IPwN1axw)
 -|-
 ![Demap in leuven theme](https://drive.google.com/uc?export=view&id=1VLprbi2G9TJiBcu19ma-EpyeLjNxsz7L) | ![Demap in doom-one theme](https://drive.google.com/uc?export=view&id=1i2z4dBbZnyLZqLzJEvaXIeIXmNz-FeIC) 
 
@@ -45,7 +45,7 @@ That last screenshot has [Solaire-mode](https://github.com/hlissner/emacs-solair
 Usage
 -----
 
-You can do `M-x demap-minimap-toggle` to open and close the defalt minimap to the
+You can do `M-x demap-minimap-toggle` to open and close the default minimap to the
 side of the active frame. If you just want to make a standalone minimap buffer, do
 `M-x demap-minimap-construct`.
 
@@ -68,7 +68,7 @@ show windows in the same frame has it by using:
 ``` emacs-lisp
 (defun my-track-window-update-p()
   "my minimap update predicate function."
-  (and (demap-track-w-mode-update-p-func-defalt)
+  (and (demap-track-w-mode-update-p-func-default)
        (get-buffer-window) ))
 
 (setq demap-track-window-mode-update-p-func #'my-track-window-update-p)
@@ -80,6 +80,6 @@ Indicate When Active
 when the window the minimap is showing is not the active window, the current
 line and visible region overlays change face's from `demap-current-line-face`
 and `demap-visible-region-face` to `demap-current-line-inactive-face` and
-`demap-visible-region-inactive-face` respectfully. by defalt these new faces are
+`demap-visible-region-inactive-face` respectfully. by default these new faces are
 the same has the usual ones, but these faces can be changed to have a visual
 indication on whether you are in the window the minimap is showing or not.
