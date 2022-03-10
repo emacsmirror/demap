@@ -4,8 +4,8 @@
 ;;
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: January 03, 2022
-;; Modified: February 22, 2022
-;; Version: 1.0.2
+;; Modified: March 9, 2022
+;; Version: 1.1.0
 ;; Keywords: lisp convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;;
