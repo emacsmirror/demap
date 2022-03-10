@@ -29,7 +29,7 @@
 ;;
 ;; this package adds a minimap that shows a zoomed out view of the active window's
 ;; buffer. you can toggle showing the minimap in a side window with
-;; `demap-minimap-toggle'.
+;; `demap-toggle'.
 ;;
 ;; this package has a few advantages over other minimap packages.
 ;; - support for detaching minimaps and having them on a different frames then the
@@ -52,28 +52,28 @@
 (require 'cl-lib)
 
 (defcustom demap-minimap-close-kill-minimap-p t
-  "Whether `demap-minimap-close' can kill minimap buffers.
-`demap-minimap-close' will only kill the minimap
+  "Whether `demap-close' can kill minimap buffers.
+`demap-close' will only kill the minimap
 buffer if it is not in any other window."
   :package-version '(demap . "1.0.0")
   :type  'boolean
   :group 'demap )
 
 (defcustom demap-minimap-window-side 'right
-  "The side of the frame `demap-minimap-open' opens a window on."
+  "The side of the frame `demap-open' opens a window on."
   :package-version '(demap . "1.0.0")
   :type  '(radio (const right)
                  (const left) )
   :group 'demap )
 
 (defcustom demap-minimap-window-width 20
-  "The width of the window `demap-minimap-open' opens."
+  "The width of the window `demap-open' opens."
   :package-version '(demap . "1.0.0")
   :type  'number
   :group 'demap )
 
 ;;;###autoload
-(defun demap-minimap-open(&optional minimap-or-name frame)
+(defun demap-open(&optional minimap-or-name frame)
   "Open minimap in a side window.
 makes a minimap buffer and shows it. if
 MINIMAP-OR-NAME is non-nil or a minimap with the
@@ -102,14 +102,14 @@ frame or one of the fallowing:
         (display-buffer nil frame) )))
 
 ;;;###autoload
-(defun demap-minimap-close(&optional minimap-or-name frame)
+(defun demap-close(&optional minimap-or-name frame)
   "Close side window showing a minimap.
 close a side window showing MINIMAP-OR-NAME. has no
 effect on normal windows showing MINIMAP-OR-NAME.
 
 a side window is a window made by
 `display-buffer-in-side-window' (the default method
-used by `demap-minimap-open').
+used by `demap-open').
 
 FRAME specifies what frame to look for side windows
 showing a minimap. it should be a live frame or one
@@ -139,7 +139,7 @@ if a window is removed returns t, otherwise nil."
         (cl-return t) ))))
 
 ;;;###autoload
-(defun demap-minimap-toggle(&optional minimap-or-name frame)
+(defun demap-toggle(&optional minimap-or-name frame)
   "Toggle side window showing a minimap.
 opens MINIMAP-OR-NAME in a side window. if its
 already showing, removes it instead.
@@ -152,11 +152,11 @@ of the fallowing:
     'visible for any visible frame,
     0        for any visible.
 
-see `demap-minimap-open' and `demap-minimap-close'
+see `demap-open' and `demap-close'
 for more information."
   (interactive)
-  (unless (demap-minimap-close minimap-or-name frame)
-    (demap-minimap-open minimap-or-name frame) ))
+  (unless (demap-close minimap-or-name frame)
+    (demap-open minimap-or-name frame) ))
 
 
 (provide 'demap)

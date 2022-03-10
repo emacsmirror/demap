@@ -45,14 +45,14 @@ That last screenshot has [Solaire-mode](https://github.com/hlissner/emacs-solair
 Usage
 -----
 
-You can do `M-x demap-minimap-toggle` to open and close the default minimap to the
+You can do `M-x demap-toggle` to open and close the default minimap to the
 side of the active frame. If you just want to make a standalone minimap buffer, do
 `M-x demap-minimap-construct`.
 
 Configuration
 -------------
 
-The side and width of the window that `demap-minimap-toggle` opens to show the
+The side and width of the window that `demap-toggle` opens to show the
 minimap can be changed by setting the variables `demap-minimap-window-side` or
 `demap-minimap-window-width`. 
 

@@ -30,7 +30,7 @@ test:
 	emacs -batch                                        \
 		--eval "(package-refresh-contents)"             \
 		--eval "(package-install-file \"$(OUT_FILE)\")" \
-		--eval "(demap-minimap-open)"
+		--eval "(demap-open)"
 
 $(PKG_FILE): $(PROJECT_EL)
 	mkdir -p $(BUILD_DIR)
