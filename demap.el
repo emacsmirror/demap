@@ -4,8 +4,8 @@
 ;;
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: November 25, 2021
-;; Modified: March 9, 2022
-;; Version: 1.2.0
+;; Modified: March 17, 2022
+;; Version: 1.3.0
 ;; Keywords: lisp tools convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
 ;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
@@ -32,9 +32,9 @@
 ;; `demap-toggle'.
 ;;
 ;; this package has a few advantages over other minimap packages.
-;; - support for detaching minimaps and having them on a different frames then the
+;; - support for detaching minimaps and having them on a different frame then the
 ;;      active window.
-;; - support for multiple minimap buffer, with there own buffer local definitions
+;; - support for multiple minimap buffers, with there own buffer local definitions
 ;;      on what buffers it can show and how to show them.
 ;; - person preference, but having the minimap on the side of the frame rather
 ;;      then on the side of the active window by default.
@@ -88,32 +88,35 @@ frame or one of the fallowing:
     t        for any live frame,
     'visible for any visible frame,
     0        for any visible."
-  (interactive) ;TODO: option for different minimaps for each frame, window or buffer.
-  (let ((display-buffer-overriding-action
-         `((display-buffer-in-side-window)
-           (side          . ,demap-minimap-window-side)
-           (window-width  . ,demap-minimap-window-width)
-           (preserve-size . (t . nil)) )))
-    (-> (or minimap-or-name
-            (get-buffer demap-minimap-default-name)
-            (demap-minimap-construct) )
-        (demap-normalize-minimap)
-        (demap-minimap-buffer)
-        (display-buffer nil frame) )))
+  (interactive)
+  (let* ((display-buffer-overriding-action
+          `((display-buffer-in-side-window)
+            (side          . ,demap-minimap-window-side)
+            (window-width  . ,demap-minimap-window-width)
+            (preserve-size . (t . nil)) ))
+         (window (-> (or minimap-or-name
+                         (get-buffer demap-minimap-default-name)
+                         (demap-minimap-construct) )
+                     (demap-normalize-minimap)
+                     (demap-minimap-buffer)
+                     (display-buffer nil frame) )))
+    (set-window-parameter   window 'no-other-window t)
+    (set-window-dedicated-p window t)
+    ;;(window-preserve-size   window t t)
+    ))
 
 ;;;###autoload
 (defun demap-close(&optional minimap-or-name frame)
-  "Close side window showing a minimap.
-close a side window showing MINIMAP-OR-NAME. has no
-effect on normal windows showing MINIMAP-OR-NAME.
+  "Close the side window showing a minimap.
+close the side window showing MINIMAP-OR-NAME. has
+no effect on normal windows showing
+MINIMAP-OR-NAME.
 
 a side window is a window made by
-`display-buffer-in-side-window' (the default method
-used by `demap-open').
+`display-buffer-in-side-window' or `demap-open'.
 
 FRAME specifies what frame to look for side windows
-showing a minimap. it should be a live frame or one
-of the fallowing:
+in. it should be:
     nil      for the selected frame,
     t        for any live frame,
     'visible for any visible frame,
@@ -145,15 +148,14 @@ opens MINIMAP-OR-NAME in a side window. if its
 already showing, removes it instead.
 
 FRAME specifies what frame to look for side windows
-showing a minimap. it should be a live frame or one
-of the fallowing:
+in. it should be:
     nil      for the selected frame,
     t        for any live frame,
     'visible for any visible frame,
     0        for any visible.
 
-see `demap-open' and `demap-close'
-for more information."
+see `demap-open' and `demap-close' for more
+information."
   (interactive)
   (unless (demap-close minimap-or-name frame)
     (demap-open minimap-or-name frame) ))
