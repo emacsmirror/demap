@@ -351,13 +351,6 @@ undose effects cosed by `demap--minimap-buffer-init'."
     (with-demoted-errors "error in demap-minimap-change-functions: %s"
       (run-hook-with-args 'demap-minimap-change-functions minimap) )))
 
-(defun demap--minimap-buffer-set-init(minimap buffer)
-  "Set the buffer used by MINIMAP to BUFFER.
-should only be called if MINIMAP dose not currently
-have a buffer."
-  (setf (demap-minimap--buffer minimap) buffer)
-  (demap--minimap-buffer-init minimap) )
-
 (defun demap--minimap-buffer-set(minimap new-buffer)
   "Set the buffer used by MINIMAP to NEW-BUFFER.
 MINIMAP's old buffer is killed."
