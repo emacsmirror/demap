@@ -254,11 +254,11 @@ this mode can only be used in a demap minimap buffer."
   :init-func (progn
                (setf demap-track-window-mode t)
                (->> (demap-buffer-minimap)
-                    (apply-partially #'demap-track-window-mode-update-as)
+                    (apply-partially #'demap-track-window-mode-update)
                     (add-hook 'window-state-change-hook) ))
   :kill-func (progn
                (->> (demap-buffer-minimap)
-                    (apply-partially #'demap-track-window-mode-update-as)
+                    (apply-partially #'demap-track-window-mode-update)
                     (remove-hook 'window-state-change-hook) )
                (kill-local-variable 'demap-track-window-mode) ))
 
@@ -277,20 +277,15 @@ meant to be a value for `demap-track-window-mode-update-p-func'.
 returns true for nearly any window, ignoring other minimaps"
   (not (demap-buffer-minimap)) )
 
-(defun demap--track-window-mode-update()
-  "Update the window the current minimap is showing.
-if the current minimap should not be showing the
-active window then tell minimap to sleep."
-  (if (funcall demap-track-window-mode-update-p-func)
-      (setf (demap-current-minimap-window) (selected-window))
-    (demap-current-minimap-window-sleep) ))
-
-(defun demap-track-window-mode-update-as(minimap)
+(defun demap-track-window-mode-update(minimap)
   "Update the window that MINIMAP is showing.
 if the MINIMAP should not be showing the active
 window then tell it to sleep."
-  (with-current-buffer (demap-minimap-buffer minimap)
-    (demap--track-window-mode-update) ))
+  (if (-> 'demap-track-window-mode-update-p-func
+          (buffer-local-value (demap-minimap-buffer minimap))
+          (funcall))
+      (setf (demap-minimap-window minimap) (selected-window))
+    (demap-minimap-window-sleep minimap) ))
 
 
 ;;;current-line-mode
@@ -322,38 +317,32 @@ this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
                (setq demap-current-line-mode (make-overlay 0 0))
-               (-as-> #'demap--current-line-mode-wake-if func
-                      (add-hook 'demap-minimap-window-set-hook   func nil t) )
-               (-as-> #'demap--current-line-mode-sleep func
-                      (add-hook 'demap-minimap-window-sleep-hook func nil t) ))
+               (let ((set-func   #'demap--current-line-mode-wake-if)
+                     (sleep-func #'demap--current-line-mode-sleep) )
+                 (add-hook 'demap-minimap-window-set-hook   set-func   nil t)
+                 (add-hook 'demap-minimap-window-sleep-hook sleep-func nil t) ))
   :kill-func (progn
                (demap--current-line-mode-sleep)
                (delete-overlay demap-current-line-mode)
                (kill-local-variable 'demap-current-line-mode)
-               (-as-> #'demap--current-line-mode-wake-if func
-                      (remove-hook 'demap-minimap-window-set-hook   func t) )
-               (-as-> #'demap--current-line-mode-sleep func
-                      (remove-hook 'demap-minimap-window-sleep-hook func t) )))
+               (let ((set-func   #'demap--current-line-mode-wake-if)
+                     (sleep-func #'demap--current-line-mode-sleep) )
+                 (remove-hook 'demap-minimap-window-set-hook   set-func   t)
+                 (remove-hook 'demap-minimap-window-sleep-hook sleep-func t) )))
 
 ;;current-line-mode update
 
-(defun demap--current-line-mode-update()
-  "Update the position of current-line mode's overlay."
-  (let ((w-buffer (window-buffer (demap-current-minimap-window)))
-        (m-buffer (current-buffer))
-        (showing  (demap-minimap-showing (demap-buffer-minimap)))
-        (ov       demap-current-line-mode) )
-    (when (eq showing (demap--tools-real-buffer w-buffer))
-      (with-current-buffer w-buffer
-        (move-overlay ov
+(defun demap-current-line-mode-update(minimap)
+  "Update the position of current-line mode's overlay in MINIMAP."
+  (let ((window-b  (window-buffer (demap-minimap-window minimap)))
+        (minimap-b (demap-minimap-buffer minimap)) )
+    (when (eq (demap--tools-real-buffer window-b)
+              (demap-minimap-showing minimap) )
+      (with-current-buffer window-b
+        (move-overlay (buffer-local-value 'demap-current-line-mode minimap-b)
                       (line-beginning-position)
                       (+ (line-end-position) 1)
-                      m-buffer )))))
-
-(defun demap--current-line-mode-update-has(minimap)
-  "Update the position of current-line mode's overlay in MINIMAP."
-  (with-current-buffer (demap-minimap-buffer minimap)
-    (demap--current-line-mode-update) ))
+                      minimap-b )))))
 
 ;;current-line-mode wake
 
@@ -361,20 +350,20 @@ this mode can only be used in a demap minimap buffer."
   "Wake up `demap-current-line-mode'."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-face)
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--current-line-mode-update-has)
+       (apply-partially #'demap-current-line-mode-update)
        (add-hook 'post-command-hook) )
-  (demap--current-line-mode-update) )
+  (demap-current-line-mode-update (demap-buffer-minimap)) )
 
 (defun demap--current-line-mode-sleep()
   "Set `demap-current-line-mode' to sleep."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-inactive-face)
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--current-line-mode-update-has)
+       (apply-partially #'demap-current-line-mode-update)
        (remove-hook 'post-command-hook) ))
 
 (defun demap--current-line-mode-wake-if()
   "Set `demap-current-line-mode' awake if minimap is showing a window."
-  (if (demap-current-minimap-window)
+  (if (demap-minimap-window)
       (demap--current-line-mode-wake)
     (demap--current-line-mode-sleep) ))
 
@@ -409,100 +398,86 @@ this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
                (setq demap-visible-region-mode (make-overlay 0 0))
-               (-as-> #'demap--visible-region-mode-wake-if func
-                      (add-hook 'demap-minimap-window-set-hook   func nil t) )
-               (-as-> #'demap--visible-region-mode-rest func
-                      (add-hook 'demap-minimap-window-sleep-hook func nil t) ))
+               (let ((set-func   #'demap--visible-region-mode-wake-if)
+                     (sleep-func #'demap--visible-region-mode-rest))
+                 (add-hook 'demap-minimap-window-set-hook   set-func   nil t)
+                 (add-hook 'demap-minimap-window-sleep-hook sleep-func nil t) ))
   :kill-func (progn
                (demap--visible-region-mode-sleep)
                (delete-overlay demap-visible-region-mode)
                (kill-local-variable 'demap-visible-region-mode)
-               (-as-> #'demap--visible-region-mode-wake-if func
-                      (remove-hook 'demap-minimap-window-set-hook   func t) )
-               (-as-> #'demap--visible-region-mode-rest func
-                      (remove-hook 'demap-minimap-window-sleep-hook func t) )))
+               (let ((set-func   #'demap--visible-region-mode-wake-if)
+                     (sleep-func #'demap--visible-region-mode-rest))
+                 (remove-hook 'demap-minimap-window-set-hook   set-func   t)
+                 (remove-hook 'demap-minimap-window-sleep-hook sleep-func t) )))
 
 ;;visible-region-mode update
 
-(defun demap--visible-region-made-active-p()
-  "Determine if `demap-visible-region-mode' should be active or not.
-returns true if the current minimap is showing the active window."
-  (let ((window  (demap-current-minimap-window)))
-    (and (window-live-p window)
-         (eq (demap--tools-real-buffer (window-buffer window))
-             (demap-minimap-showing) ))))
-
 ;;TODO: re-render minimap when changing on a different frame
-(defun demap--visible-region-mode-update()
-  "Update the position of `demap-visible-region-mode''s overlay.
-minimap will scroll if overlay goes off screen."
-  (if (demap--visible-region-made-active-p)
-      (let* ((window (demap-current-minimap-window))
-             (ov-start (window-start window))
-             (ov-end   (window-end window t)) )
-        (move-overlay demap-visible-region-mode
-                      ov-start
-                      ov-end
-                      (current-buffer) )
-        (dolist (w (get-buffer-window-list (current-buffer) nil t))
-          (when (>= (window-start w) ov-start)
-            (set-window-point w ov-start) )
-          (when (<= (window-end w t) ov-end)
-            (set-window-point w ov-end) )))
-    (demap--visible-region-mode-sleep) ));TODO: see if this line can be removed
+(defun demap--visible-region-mode-update(minimap)
+  "Update the position of `demap-visible-region-mode''s overlay in MINIMAP."
+  (let ((window (demap-minimap-window minimap)))
+    (let ((buffer (demap-minimap-buffer minimap))
+          (start  (window-start window))
+          (end    (window-end window t)) )
+      (-> (buffer-local-value 'demap-visible-region-mode buffer)
+          (move-overlay start end buffer) )
+      (demap--tools-scroll-buffer-to-region buffer start end nil t) )))
 
-(defun demap--visible-region-mode-update-has(minimap &rest ignored)
+(defun demap--visible-region-mode-update-if(minimap &rest _args)
   "Update the position of `demap-visible-region-mode''s overlay in MINIMAP.
-IGNORED is ignored for function hooks."
-  (ignore ignored)
-  (with-current-buffer (demap-minimap-buffer minimap)
-    (demap--visible-region-mode-update) ))
+if MINIMAP is not showing the buffer in its window
+then this sets `demap-visible-region-mode' to
+sleep."
+  (if (demap-minimap-window-showing-p minimap)
+      (demap--visible-region-mode-update minimap)
+    (with-current-buffer (demap-minimap-buffer minimap)
+      (demap--visible-region-mode-sleep) )))
 
-(defun demap--visible-region-mode-update-window-as(minimap window &rest ignored)
+(defun demap--visible-region-mode-update-window-has(minimap window &rest _args)
   "Update the position of `demap-visible-region-mode''s overlay in MINIMAP.
 if MINIMAP is not showing WINDOW then nothing happens.
-IGNORED is ignored for function hooks."
-  (ignore ignored)
+_ARGS is ignored for function hooks."
   (when (eq window (demap-minimap-window minimap))
-    (with-current-buffer (demap-minimap-buffer minimap)
-      (demap--visible-region-mode-update) )))
+    (demap--visible-region-mode-update-if minimap) ))
 
 ;;visible-region-mode wake
 
 (defun demap--visible-region-mode-wake()
   "Wake up `demap-visible-region-mode'.
 set face and add hooks to update overlay."
-  (overlay-put demap-visible-region-mode 'face 'demap-visible-region-face)
+  (overlay-put demap-visible-region-mode
+               'face 'demap-visible-region-face)
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-window-as)
+       (apply-partially #'demap--visible-region-mode-update-window-has)
        (add-hook 'window-scroll-functions) )
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-has)
+       (apply-partially #'demap--visible-region-mode-update-if)
        (add-hook 'window-size-change-functions) )
-  (demap--visible-region-mode-update) )
+  (demap--visible-region-mode-update-if (demap-buffer-minimap)) )
 
 (defun demap--visible-region-mode-sleep()
   "Put `demap-visible-region-mode' to sleep.
 set face and remove hooks that update overlay."
-  (->> 'demap-visible-region-inactive-face
-       (overlay-put demap-visible-region-mode 'face) )
+  (overlay-put demap-visible-region-mode
+               'face 'demap-visible-region-inactive-face )
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-window-as)
+       (apply-partially #'demap--visible-region-mode-update-window-has)
        (remove-hook 'window-scroll-functions) )
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-has)
+       (apply-partially #'demap--visible-region-mode-update-if)
        (remove-hook 'window-size-change-functions) ))
 
 (defun demap--visible-region-mode-wake-if()
   "Set `demap-visible-region-mode' awake if minimap is showing a window."
-  (if (demap-current-minimap-window)
+  (if (demap-minimap-window)
       (demap--visible-region-mode-wake)
     (demap--visible-region-mode-sleep) ))
 
 (defun demap--visible-region-mode-rest()
   "Change `demap-visible-region-mode' overlay's face to reflect minimap state."
-  (->> 'demap-visible-region-inactive-face
-       (overlay-put demap-visible-region-mode 'face) ))
+  (overlay-put demap-visible-region-mode
+               'face 'demap-visible-region-inactive-face ))
 
 
 (provide 'demap-modes)

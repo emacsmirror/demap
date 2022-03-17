@@ -364,7 +364,21 @@ ARGS       arguments, see `define-miner-mode'."
        (defvar-local ,var ,init-value
          ,(or doc (demap--tools-define-mode-var-get-doc var)) ))))
 
+;;overlay
 
+(defun demap--tools-scroll-to-region(window start end)
+  ""
+  (when (>= (window-start window) start)
+    (set-window-point window start) )
+  (when (<= (window-end window t) end)
+    (set-window-point window end) ))
+
+(defun demap--tools-scroll-buffer-to-region(buffer-or-name
+                                            start end
+                                            &optional minibuf frame )
+  ""
+  (dolist (window (get-buffer-window-list buffer-or-name minibuf frame))
+    (demap--tools-scroll-to-region window start end) ))
 
 
 (provide 'demap-tools)
