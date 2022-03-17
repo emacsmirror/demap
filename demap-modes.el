@@ -27,7 +27,7 @@
 ;;
 ;;; Commentary:
 ;;
-;; Addon for demap.el that adds modes meant to run in demap-minimap buffers.
+;; Addon for demap.el that adds modes meant to run in demap minimap buffers.
 ;; minimap modes (defined with `demap-define-minimap-miner-mode') are modes that
 ;; can only be activated in a minimap. the minimap mode `demap-track-window-mode'
 ;; updates the window that the minimap is showing while
@@ -235,7 +235,7 @@ the rest of the arguments are passed to
   "Function to determine if demap-minimap should show the selected window.
 the function should accept no arguments. it should
 return nil if the current minimap should not show the
-selected window."
+active window."
   :package-version '(demap . "1.0.0")
   :type 'function
   :group 'demap )
@@ -265,22 +265,24 @@ this mode can only be used in a demap minimap buffer."
 ;;track-window-mode update
 
 (defun demap-track-window-mode-update-p-func-default()
-  "Determine if track-w mode can fallow the active window.
+  "Determine if `demap-track-window-mode' should fallow the active window.
 default value for `demap-track-window-mode-update-p-func'.
 returns nil if the active window's buffer is not a
 file buffer."
   (buffer-file-name (window-buffer)) )
 
 (defun demap-track-window-mode-update-p-func-any()
-  "Determine if track-w mode can fallow the active window.
+  "Determine if `demap-track-window-mode' should fallow the active window.
 meant to be a value for `demap-track-window-mode-update-p-func'.
 returns true for nearly any window, ignoring other minimaps"
   (not (demap-buffer-minimap)) )
 
 (defun demap-track-window-mode-update(minimap)
-  "Update the window that MINIMAP is showing.
+  "Update the window that MINIMAP is showing to the active window.
 if the MINIMAP should not be showing the active
-window then tell it to sleep."
+window according to
+`demap-track-window-mode-update-p-func', then this
+tells the minimap to sleep instead."
   (if (-> 'demap-track-window-mode-update-p-func
           (buffer-local-value (demap-minimap-buffer minimap))
           (funcall))
@@ -293,14 +295,14 @@ window then tell it to sleep."
 (defface demap-current-line-face
   '((t (:inherit hl-line
         :extend  t )))
-  "Face used to highlight the current line in demap-minimap."
+  "Face used to highlight the current line in demap minimaps."
   :package-version '(demap . "1.0.0")
   :group 'demap )
 
 (defface demap-current-line-inactive-face
   '((t (:inherit demap-current-line-face
         :extend  t )))
-  "Face used to highlight the current line in demap-minimap when not active."
+  "Face used to highlight the current line in demap minimaps when not active."
   :package-version '(demap . "1.0.0")
   :group 'demap )
 
@@ -308,7 +310,7 @@ window then tell it to sleep."
 (demap-define-minimap-miner-mode demap-current-line-mode
   "Minimap miner mode to highlight the current line.
 this will use `demap-current-line-face' to
-highlight the line, or
+highlight the current line, or
 `demap-current-line-inactive-face' when the window
 the current minimap is showing is not active.
 
@@ -333,7 +335,7 @@ this mode can only be used in a demap minimap buffer."
 ;;current-line-mode update
 
 (defun demap-current-line-mode-update(minimap)
-  "Update the position of current-line mode's overlay in MINIMAP."
+  "Update the position of `demap-current-line-mode''s overlay in MINIMAP."
   (let ((window-b  (window-buffer (demap-minimap-window minimap)))
         (minimap-b (demap-minimap-buffer minimap)) )
     (when (eq (demap--tools-real-buffer window-b)
@@ -373,20 +375,20 @@ this mode can only be used in a demap minimap buffer."
 (defface demap-visible-region-face
   '((t (:inherit region
         :extend  t )))
-  "Face used to highlight the visible region in demap-minimap."
+  "Face used to highlight the visible region in demap minimaps."
   :package-version '(demap . "1.0.0")
   :group 'demap )
 
 (defface demap-visible-region-inactive-face
   '((t (:inherit demap-visible-region-face
         :extend  t )))
-  "Face used to highlight the visible region in demap-minimap when not active."
+  "Face used to highlight the visible region in demap minimaps when not active."
   :package-version '(demap . "1.0.0")
   :group 'demap )
 
 ;;;###autoload
 (demap-define-minimap-miner-mode demap-visible-region-mode
-  "minimap miner mode to show the visible region in minimaps window.
+  "Minimap miner mode to show the visible region in minimaps window.
 this highlights the area in the minimap visible
 from the window it is showing. when the window
 shown is active, the face
@@ -413,7 +415,6 @@ this mode can only be used in a demap minimap buffer."
 
 ;;visible-region-mode update
 
-;;TODO: re-render minimap when changing on a different frame
 (defun demap--visible-region-mode-update(minimap)
   "Update the position of `demap-visible-region-mode''s overlay in MINIMAP."
   (let ((window (demap-minimap-window minimap)))
@@ -428,13 +429,14 @@ this mode can only be used in a demap minimap buffer."
   "Update the position of `demap-visible-region-mode''s overlay in MINIMAP.
 if MINIMAP is not showing the buffer in its window
 then this sets `demap-visible-region-mode' to
-sleep."
+sleep.
+_ARGS is ignored for function hooks."
   (if (demap-minimap-window-showing-p minimap)
       (demap--visible-region-mode-update minimap)
     (with-current-buffer (demap-minimap-buffer minimap)
       (demap--visible-region-mode-sleep) )))
 
-(defun demap--visible-region-mode-update-window-has(minimap window &rest _args)
+(defun demap--visible-region-mode-update-window-as(minimap window &rest _args)
   "Update the position of `demap-visible-region-mode''s overlay in MINIMAP.
 if MINIMAP is not showing WINDOW then nothing happens.
 _ARGS is ignored for function hooks."
@@ -449,7 +451,7 @@ set face and add hooks to update overlay."
   (overlay-put demap-visible-region-mode
                'face 'demap-visible-region-face)
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-window-has)
+       (apply-partially #'demap--visible-region-mode-update-window-as)
        (add-hook 'window-scroll-functions) )
   (->> (demap-buffer-minimap)
        (apply-partially #'demap--visible-region-mode-update-if)
@@ -462,7 +464,7 @@ set face and remove hooks that update overlay."
   (overlay-put demap-visible-region-mode
                'face 'demap-visible-region-inactive-face )
   (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-window-has)
+       (apply-partially #'demap--visible-region-mode-update-window-as)
        (remove-hook 'window-scroll-functions) )
   (->> (demap-buffer-minimap)
        (apply-partially #'demap--visible-region-mode-update-if)
