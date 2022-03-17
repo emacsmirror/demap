@@ -89,17 +89,21 @@ frame or one of the fallowing:
     'visible for any visible frame,
     0        for any visible."
   (interactive) ;TODO: option for different minimaps for each frame, window or buffer.
-  (let ((display-buffer-overriding-action
-         `((display-buffer-in-side-window)
-           (side          . ,demap-minimap-window-side)
-           (window-width  . ,demap-minimap-window-width)
-           (preserve-size . (t . nil)) )))
-    (-> (or minimap-or-name
-            (get-buffer demap-minimap-default-name)
-            (demap-minimap-construct) )
-        (demap-normalize-minimap)
-        (demap-minimap-buffer)
-        (display-buffer nil frame) )))
+  (let* ((display-buffer-overriding-action
+          `((display-buffer-in-side-window)
+            (side          . ,demap-minimap-window-side)
+            (window-width  . ,demap-minimap-window-width)
+            (preserve-size . (t . nil)) ))
+         (window (-> (or minimap-or-name
+                         (get-buffer demap-minimap-default-name)
+                         (demap-minimap-construct) )
+                     (demap-normalize-minimap)
+                     (demap-minimap-buffer)
+                     (display-buffer nil frame) )))
+    (set-window-parameter   window 'no-other-window t)
+    (set-window-dedicated-p window t)
+    ;;(window-preserve-size   window t t)
+    ))
 
 ;;;###autoload
 (defun demap-close(&optional minimap-or-name frame)

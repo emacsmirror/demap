@@ -62,10 +62,21 @@ if this file is auto-loaded, also load demap.el"
 
 ;;buffer
 
-(defun demap--tools-window-replace-buffer(buffer-or-name new-buffer-or-name)
-  "Replace the buffer in all windows holding BUFFER-OR-NAME with NEW-BUFFER-OR-NAME."
+(defun demap--tools-window-replace-buffer(buffer-or-name
+                                          new-buffer-or-name
+                                          &optional dedicated)
+  "Replace BUFFER-OR-NAME in all window showing it with NEW-BUFFER-OR-NAME.
+if the optional third argument DEDICATED is
+non-nil, then this function will force the change
+and proserve the windows dedicated property."
   (dolist (window (get-buffer-window-list buffer-or-name t t))
-    (set-window-buffer window new-buffer-or-name t) ))
+    (let ((d (window-dedicated-p window)))
+      (if (and d dedicated)
+          (progn
+            (set-window-dedicated-p window nil)
+            (set-window-buffer window new-buffer-or-name t)
+            (set-window-dedicated-p window d) )
+        (set-window-buffer window new-buffer-or-name t) ))))
 
 (defun demap--tools-buffer-steal-name(buffer-or-name)
   "Rename BUFFER-OR-NAME and return its old name.
@@ -364,7 +375,7 @@ ARGS       arguments, see `define-miner-mode'."
        (defvar-local ,var ,init-value
          ,(or doc (demap--tools-define-mode-var-get-doc var)) ))))
 
-;;overlay
+;;scroll
 
 (defun demap--tools-scroll-to-region(window start end)
   ""

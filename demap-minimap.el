@@ -213,7 +213,7 @@ returns the reconstructed buffer. BUFFER will be
 left in an undefined state."
   (let ((new (-> (demap--tools-buffer-steal-name buffer)
                  (demap--buffer-construct show) )))
-    (demap--tools-window-replace-buffer buffer new)
+    (demap--tools-window-replace-buffer buffer new t)
     new ))
 
 
