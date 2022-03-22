@@ -203,7 +203,11 @@ see `dolist'.
 ;;hooks
 
 (defalias 'demap--tools-add-hook    #'add-hook)
-(defalias 'demap--tools-remove-hook #'remove-hook)
+
+(defun demap--tools-remove-hook(hook function &optional local)
+  "Wrapper for `remove-hook'.
+passes HOOK FUNCTION and LOCAL to `remove-hook'."
+  (remove-hook hook function local))
 
 (defun demap--tools-add-hooks(hooks funcs &optional depth local)
   "Add to the value of HOOKS the functions FUNCS.
