@@ -63,7 +63,7 @@
 (require 'demap-tools)
 
 
-(eval-when-compile
+(eval-and-compile
   (require 'cl-lib)
   (require 'subr-x)
   (when (>= emacs-major-version 28)

@@ -5,10 +5,10 @@
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: January 04, 2022
 ;; Modified: March 17, 2022
-;; Version: 1.3.0
+;; Version: 1.4.0
 ;; Keywords: lisp convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
-;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
+;; Package-Requires: ((emacs "25.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -48,11 +48,12 @@
 ;;
 ;;; Code:
 
-(require 'demap-tools)
-(require 'demap-minimap)
-(require 'dash)
-(require 'cl-lib)
-(require 'hl-line)
+(eval-and-compile
+  (require 'demap-minimap)
+  (require 'demap-tools)
+  (require 'hl-line)
+  (require 'cl-lib)
+  (require 'subr-x) )
 
 
 ;;;define-minimap-miner-mode
@@ -160,57 +161,52 @@ the rest of the arguments are passed to
           (:protect
            (if (symbolp val)
                (push `',val protect)
-             (--> (mapcar (lambda(x) `',x) val)
-                  (append it protect)
-                  (setq protect it) )))
+             (setq protect (thread-first
+                             (lambda(x) `',x)
+                             (mapcar val)
+                             (append protect) ))))
           ;;rest
-          (_
-           (--> (list val key)
-                (append it rest)
-                (setq rest it) )))))
+          (_           (setq rest (append (list val key) rest))) )))
     (setq rest (nreverse rest))
     (when (and construct-variable (not globalp))
       (push `',mode protect) )
     (when (and globalp construct-variable)
-      (->> `(progn
-              (when (called-interactively-p 'any)
-                (customize-mark-as-set ',mode) )
-              ,@(when after-hook
-                  `(,after-hook) ))
-           (setq after-hook) ))
-    (--> (or set-func
-             (let ((state-var (make-symbol "-state")))
-               `(lambda(,state-var)
-                  (if ,state-var
-                      ,(or init-func `(,@setter t  ))
-                    ,(or kill-func `(,@setter nil)) ))))
-         (if (symbolp it)
-             `(,it)
-           `(funcall ,it) )
-         (setq set-func it) )
-    (->> (let ((state-var (make-symbol "-state"))
-               (error-msg "%s can only be used in a demap-minimap buffer")
-               (kill-hook 'demap-minimap-kill-hook)
-               (chng-hook 'demap-minimap-change-major-mode-hook)
-               (kill-func `(lambda()
-                             (,mode 0) ))
-               (chng-func `(lambda()
-                             (unless (get ',mode 'permanent-local)
-                               (,mode 0) ))))
-           `(lambda(,state-var)
-              (cl-assert (demap-buffer-minimap) nil ,error-msg ',mode)
-              (when (xor ,state-var ,getter)
-                (,@set-func ,state-var)
-                (unless (xor ,state-var ,getter)
-                  (if ,state-var
-                      (progn
-                        (demap-minimap-protect-variables t ,@protect)
-                        (add-hook ',kill-hook #',kill-func nil t)
-                        (add-hook ',chng-hook #',chng-func nil t) )
-                    (demap-minimap-unprotect-variables t ,@protect)
-                    (remove-hook ',kill-hook #',kill-func t)
-                    (remove-hook ',chng-hook #',chng-func t) )))))
-         (setq func) )
+      (setq after-hook `(progn
+                          (when (called-interactively-p 'any)
+                            (customize-mark-as-set ',mode) )
+                          ,@(when after-hook
+                              `(,after-hook) ))))
+    (setq set-func (if set-func
+                       (if (symbolp func)
+                           `(,func)
+                         `(funcall ,func) )
+                     (let ((state-var (make-symbol "-state")))
+                       `(funcall (lambda(,state-var)
+                                   (if ,state-var
+                                       ,(or init-func `(,@setter t  ))
+                                     ,(or   kill-func `(,@setter nil)) ))))))
+    (let ((state-var (make-symbol "-state"))
+          (error-msg "%s can only be used in a demap-minimap buffer")
+          (kill-hook 'demap-minimap-kill-hook)
+          (chng-hook 'demap-minimap-change-major-mode-hook)
+          (kill-func `(lambda()
+                        (,mode 0) ))
+          (chng-func `(lambda()
+                        (unless (get ',mode 'permanent-local)
+                          (,mode 0) ))))
+      (setq func `(lambda(,state-var)
+                    (cl-assert (demap-buffer-minimap) nil ,error-msg ',mode)
+                    (when (xor ,state-var ,getter)
+                      (,@set-func ,state-var)
+                      (unless (xor ,state-var ,getter)
+                        (if ,state-var
+                            (progn
+                              (demap-minimap-protect-variables t ,@protect)
+                              (add-hook ',kill-hook #',kill-func nil t)
+                              (add-hook ',chng-hook #',chng-func nil t) )
+                          (demap-minimap-unprotect-variables t ,@protect)
+                          (remove-hook ',kill-hook #',kill-func t)
+                          (remove-hook ',chng-hook #',chng-func t) ))))))
     `(progn
        ,@(when construct-variable
            `((demap--tools-define-mode-var ,mode ,init-value
@@ -218,9 +214,12 @@ the rest of the arguments are passed to
                                            ,@rest )))
        (define-minor-mode ,mode
          ,doc
-         ,init-value
-         ,lighter
-         ,keymap
+         ,@(when init-value
+             `(:init-value ,init-value))
+         ,@(when lighter
+             `(:init-value ,lighter))
+         ,@(when keymap
+             `(:init-value ,keymap))
          ,@(when after-hook
              `(:after-hook ,after-hook) )
          :global ,globalp
@@ -253,13 +252,15 @@ this mode can only be used in a demap minimap buffer."
   :group 'demap
   :init-func (progn
                (setf demap-track-window-mode t)
-               (->> (demap-buffer-minimap)
-                    (apply-partially #'demap-track-window-mode-update)
-                    (add-hook 'window-state-change-hook) ))
+               (thread-last
+                 (demap-buffer-minimap)
+                 (apply-partially #'demap-track-window-mode-update)
+                 (add-hook 'window-state-change-hook) ))
   :kill-func (progn
-               (->> (demap-buffer-minimap)
-                    (apply-partially #'demap-track-window-mode-update)
-                    (remove-hook 'window-state-change-hook) )
+               (thread-last
+                 (demap-buffer-minimap)
+                 (apply-partially #'demap-track-window-mode-update)
+                 (remove-hook 'window-state-change-hook) )
                (kill-local-variable 'demap-track-window-mode) ))
 
 ;;track-window-mode update
@@ -283,9 +284,10 @@ if the MINIMAP should not be showing the active
 window according to
 `demap-track-window-mode-update-p-func', then this
 tells the minimap to sleep instead."
-  (if (-> 'demap-track-window-mode-update-p-func
-          (buffer-local-value (demap-minimap-buffer minimap))
-          (funcall))
+  (if (thread-first
+        'demap-track-window-mode-update-p-func
+        (buffer-local-value (demap-minimap-buffer minimap))
+        (funcall) )
       (setf (demap-minimap-window minimap) (selected-window))
     (demap-minimap-window-sleep minimap) ))
 
@@ -351,17 +353,19 @@ this mode can only be used in a demap minimap buffer."
 (defun demap--current-line-mode-wake()
   "Wake up `demap-current-line-mode'."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-face)
-  (->> (demap-buffer-minimap)
-       (apply-partially #'demap-current-line-mode-update)
-       (add-hook 'post-command-hook) )
+  (thread-last
+    (demap-buffer-minimap)
+    (apply-partially #'demap-current-line-mode-update)
+    (add-hook 'post-command-hook) )
   (demap-current-line-mode-update (demap-buffer-minimap)) )
 
 (defun demap--current-line-mode-sleep()
   "Set `demap-current-line-mode' to sleep."
   (overlay-put demap-current-line-mode 'face 'demap-current-line-inactive-face)
-  (->> (demap-buffer-minimap)
-       (apply-partially #'demap-current-line-mode-update)
-       (remove-hook 'post-command-hook) ))
+  (thread-last
+    (demap-buffer-minimap)
+    (apply-partially #'demap-current-line-mode-update)
+    (remove-hook 'post-command-hook) ))
 
 (defun demap--current-line-mode-wake-if()
   "Set `demap-current-line-mode' awake if minimap is showing a window."
@@ -421,8 +425,10 @@ this mode can only be used in a demap minimap buffer."
     (let ((buffer (demap-minimap-buffer minimap))
           (start  (window-start window))
           (end    (window-end window t)) )
-      (-> (buffer-local-value 'demap-visible-region-mode buffer)
-          (move-overlay start end buffer) )
+      (thread-first
+        'demap-visible-region-mode
+        (buffer-local-value buffer)
+        (move-overlay start end buffer) )
       (demap--tools-scroll-buffer-to-region buffer start end nil t) )))
 
 (defun demap--visible-region-mode-update-if(minimap &rest _args)
@@ -450,12 +456,14 @@ _ARGS is ignored for function hooks."
 set face and add hooks to update overlay."
   (overlay-put demap-visible-region-mode
                'face 'demap-visible-region-face)
-  (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-window-as)
-       (add-hook 'window-scroll-functions) )
-  (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-if)
-       (add-hook 'window-size-change-functions) )
+  (thread-last
+    (demap-buffer-minimap)
+    (apply-partially #'demap--visible-region-mode-update-window-as)
+    (add-hook 'window-scroll-functions) )
+  (thread-last
+    (demap-buffer-minimap)
+    (apply-partially #'demap--visible-region-mode-update-if)
+    (add-hook 'window-size-change-functions) )
   (demap--visible-region-mode-update-if (demap-buffer-minimap)) )
 
 (defun demap--visible-region-mode-sleep()
@@ -463,12 +471,14 @@ set face and add hooks to update overlay."
 set face and remove hooks that update overlay."
   (overlay-put demap-visible-region-mode
                'face 'demap-visible-region-inactive-face )
-  (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-window-as)
-       (remove-hook 'window-scroll-functions) )
-  (->> (demap-buffer-minimap)
-       (apply-partially #'demap--visible-region-mode-update-if)
-       (remove-hook 'window-size-change-functions) ))
+  (thread-last
+    (demap-buffer-minimap)
+    (apply-partially #'demap--visible-region-mode-update-window-as)
+    (remove-hook 'window-scroll-functions) )
+  (thread-last
+    (demap-buffer-minimap)
+    (apply-partially #'demap--visible-region-mode-update-if)
+    (remove-hook 'window-size-change-functions) ))
 
 (defun demap--visible-region-mode-wake-if()
   "Set `demap-visible-region-mode' awake if minimap is showing a window."

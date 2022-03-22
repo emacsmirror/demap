@@ -35,7 +35,7 @@
 ;;
 ;;; Code:
 
-(eval-when-compile
+(eval-and-compile
   (require 'subr-x)
   (when (>= emacs-major-version 28)
     ;;window.el doesn't provide 'window before version 28
