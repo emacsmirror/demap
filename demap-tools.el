@@ -5,10 +5,10 @@
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: January 04, 2022
 ;; Modified: March 17, 2022
-;; Version: 1.3.0
+;; Version: 1.4.0
 ;; Keywords: lisp extensions internal local tools
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
-;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
+;; Package-Requires: ((emacs "25.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -39,8 +39,6 @@
   (when (>= emacs-major-version 28)
     ;;window.el doesn't provide 'window before version 28
     (require 'window) ))
-
-(require 'dash)
 
 ;;define
 
@@ -96,8 +94,8 @@ see `buffer-base-buffer'."
 (defun demap--tools-side-window-p(window)
   "Whether WINDOW is a side window."
   (or (window-parameter window 'window-side)
-      (-some-> (window-parent window)
-        (window-parameter 'window-side) )))
+      (when-let (x (window-parent window))
+        (window-parameter x 'window-side) )))
 
 ;;variables
 
@@ -238,8 +236,9 @@ from HOOK. the returned function excepts no arguments.
 DEPTH and LOCAL are passed to `add-hook'."
   (demap--tools-add-hook hook func depth local)
   (if local
-      (->> (current-buffer)
-           (apply-partially #'demap--tools-remove-hook-local hook func) )
+      (thread-first
+        #'demap--tools-remove-hook-local
+        (apply-partially hook func (current-buffer)) )
     (apply-partially #'demap--tools-remove-hook hook func) ))
 
 (defun demap--tools-smart-add-hooks(hooks funcs &optional depth local)
@@ -254,8 +253,9 @@ from HOOKS. the returned function excepts no arguments.
 DEPTH and LOCAL are passed to `add-hook'."
   (demap--tools-add-hooks hooks funcs depth local)
   (if local
-      (->> (current-buffer)
-           (apply-partially #'demap--tools-remove-hooks-local hooks funcs) )
+      (thread-first
+        #'demap--tools-remove-hooks-local
+        (apply-partially hooks funcs (current-buffer)) )
     (apply-partially #'demap--tools-remove-hooks hooks funcs) ))
 
 
