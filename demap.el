@@ -5,10 +5,10 @@
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: November 25, 2021
 ;; Modified: March 17, 2022
-;; Version: 1.3.0
+;; Version: 1.4.0
 ;; Keywords: lisp tools convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
-;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
+;; Package-Requires: ((emacs "25.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -44,12 +44,13 @@
 ;;
 ;;; Code:
 
-(require 'demap-tools)
-(demap--tools-define-demap-start)
-(require 'demap-minimap)
-(require 'demap-modes)
-(require 'dash)
-(require 'cl-lib)
+(eval-and-compile
+  (require 'demap-tools)
+  (demap--tools-define-demap-start)
+  (require 'demap-minimap)
+  (require 'cl-lib)
+  (require 'demap-modes)
+  (require 'subr-x) )
 
 (defcustom demap-minimap-close-kill-minimap-p t
   "Whether `demap-close' can kill minimap buffers.
@@ -94,16 +95,16 @@ frame or one of the fallowing:
             (side          . ,demap-minimap-window-side)
             (window-width  . ,demap-minimap-window-width)
             (preserve-size . (t . nil)) ))
-         (window (-> (or minimap-or-name
-                         (get-buffer demap-minimap-default-name)
-                         (demap-minimap-construct) )
-                     (demap-normalize-minimap)
-                     (demap-minimap-buffer)
-                     (display-buffer nil frame) )))
+         (window (thread-first
+                   (or minimap-or-name
+                       (get-buffer demap-minimap-default-name)
+                       (demap-minimap-construct) )
+                   (demap-normalize-minimap)
+                   (demap-minimap-buffer)
+                   (display-buffer nil frame) )))
     (set-window-parameter   window 'no-other-window t)
     (set-window-dedicated-p window t)
-    ;;(window-preserve-size   window t t)
-    ))
+    (window-preserve-size   window t t) ))
 
 ;;;###autoload
 (defun demap-close(&optional minimap-or-name frame)
@@ -127,16 +128,18 @@ could kill MINIMAP-OR-NAME if
 
 if a window is removed returns t, otherwise nil."
   (interactive)
-  (-when-let (minimap-buffer (ignore-errors
-                               (-> (or minimap-or-name
-                                       demap-minimap-default-name )
-                                   (demap-normalize-minimap)
-                                   (demap-minimap--buffer) )))
+  (when-let ((minimap-buffer (ignore-errors
+                               (thread-first
+                                 (or minimap-or-name
+                                     demap-minimap-default-name )
+                                 (demap-normalize-minimap)
+                                 (demap-minimap--buffer) ))))
     (cl-dolist (window (get-buffer-window-list minimap-buffer nil frame) nil)
       (when (demap--tools-side-window-p window)
         (delete-window window)
-        (when (and (-> 'demap-minimap-close-kill-minimap-p
-                       (buffer-local-value minimap-buffer) )
+        (when (and (thread-first
+                     'demap-minimap-close-kill-minimap-p
+                     (buffer-local-value minimap-buffer) )
                    (not (get-buffer-window minimap-buffer t)) )
           (kill-buffer minimap-buffer) )
         (cl-return t) ))))
