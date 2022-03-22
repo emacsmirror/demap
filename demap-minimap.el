@@ -5,10 +5,10 @@
 ;; Author: Sawyer Gardner <https://gitlab.com/sawyerjgardner>
 ;; Created: January 03, 2022
 ;; Modified: March 17, 2022
-;; Version: 1.3.0
+;; Version: 1.4.0
 ;; Keywords: lisp convenience
 ;; Homepage: https://gitlab.com/sawyerjgardner/demap.el
-;; Package-Requires: ((emacs "24.4") (dash "2.18.0"))
+;; Package-Requires: ((emacs "25.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -61,10 +61,11 @@
 ;;; Code:
 
 (require 'demap-tools)
-(require 'dash)
+
 
 (eval-when-compile
   (require 'cl-lib)
+  (require 'subr-x)
   (when (>= emacs-major-version 28)
     ;;window.el doesn't provide 'window before version 28
     (require 'window) ))
@@ -167,7 +168,7 @@ see `demap-buffer-minimap'." )
 
 (put 'demap--minimap-window 'permanent-local t)
 (defvar-local demap--minimap-window nil
-  "the window that the current minimap is showing.
+  "The window that the current minimap is showing.
 see `demap-minimap-window'." )
 
 
@@ -179,8 +180,7 @@ name defaults to the value in
 `demap-minimap-default-name' otherwise its
 identical to
 \(`generate-new-buffer-name' NAME IGNORE)"
-  (-> (or name demap-minimap-default-name)
-      (generate-new-buffer-name ignore) ))
+  (generate-new-buffer-name (or name demap-minimap-default-name) ignore) )
 
 (defun demap--make-indirect-buffer(base-buffer name &optional clone)
   "Create and return an indirect buffer for buffer BASE-BUFFER, named NAME.
@@ -207,16 +207,18 @@ returns BUFFER."
 (defun demap--buffer-construct(&optional name show)
   "Construct a buffer for a demap minimap.
 using name NAME and showing buffer SHOW."
-  (->> (demap--buffer-new-name name)
-       (demap--make-indirect-buffer show)
-       (demap--buffer-init) ))
+  (thread-last
+    (demap--buffer-new-name name)
+    (demap--make-indirect-buffer show)
+    (demap--buffer-init) ))
 
 (defun demap--buffer-change-showing(buffer &optional show)
   "Reconstruct indirect BUFFER to show SHOW.
 returns the reconstructed buffer. BUFFER will be
 left in an undefined state."
-  (let ((new (-> (demap--tools-buffer-steal-name buffer)
-                 (demap--buffer-construct show) )))
+  (let ((new (thread-first
+               (demap--tools-buffer-steal-name buffer)
+               (demap--buffer-construct show) )))
     (demap--tools-window-replace-buffer buffer new t)
     new ))
 
@@ -305,8 +307,9 @@ buffer-local value of
   "Return the demap minimap associated with BUFFER-OR-NAME.
 If BUFFER-OR-NAME is not a minimap buffer, then
 this returns nil."
-  (->> (window-normalize-buffer buffer-or-name)
-       (buffer-local-value 'demap--current-minimap) ))
+  (thread-last
+    (window-normalize-buffer buffer-or-name)
+    (buffer-local-value 'demap--current-minimap) ))
 
 (defun demap--minimap-changeing-major-mode()
   "Function ran when a minimap is changeing its major mode.
@@ -330,9 +333,10 @@ ran in the minimaps buffer."
       (when showing
         ;;FIXME: might cause problems if the base
         ;;buffer is killed in demap-minimap-change-hook
-        (--> (apply-partially #'demap-minimap-showing-set minimap nil)
-             (demap--tools-smart-add-hook-local 'kill-buffer-hook it nil showing)
-             (add-hook 'kill-buffer-hook it nil t) )))))
+        (let* ((func  (apply-partially #'demap-minimap-showing-set minimap nil))
+               (clean (demap--tools-smart-add-hook-local 'kill-buffer-hook
+                                                         func nil showing )))
+          (add-hook 'kill-buffer-hook clean nil t) )))))
 
 (defun demap--minimap-buffer-uninit(minimap)
   "Close any connection betwean MINIMAP and its buffer.
@@ -347,9 +351,10 @@ undoes effects caused by `demap--minimap-buffer-init'."
       ;;removed for optimization reasons:
       ;; (remove-hook 'change-major-mode-hook change-func t)
       ;; (when showing
-      ;;   (--> (apply-partially #'demap-minimap-showing-set minimap nil)
-      ;;        ;;(demap--tools-smart-add-hook-local 'kill-buffer-hook it nil showing)
-      ;;        (remove-hook 'kill-buffer-hook it nil t) ))
+      ;; (let* ((func  (apply-partially #'demap-minimap-showing-set minimap nil))
+      ;;        ;; (clean (demap--tools-smart-add-hook-local 'kill-buffer-hook
+      ;;        ;;                                            func nil showing )))
+      ;;   (remove-hook 'kill-buffer-hook clean nil t) )
       )))
 
 (defun demap--minimap-buffer-changed(minimap old-buffer)
@@ -401,7 +406,7 @@ SHOWING is the buffer that the minimap should show.
                               demap-minimap-default-name )
                       nil nil demap-minimap-default-name )
                      nil ))
-  (-let [minimap (demap--minimap-construct-quiet name showing)]
+  (let ((minimap (demap--minimap-construct-quiet name showing)))
     (when (called-interactively-p 'any)
       (message "constructed demap minimap %s" minimap) )
     minimap ))
@@ -430,8 +435,9 @@ BUFFER is already being shown.
 if BUFFER is nil, then MINIMAP will show a blank
 buffer."
   (let ((old-buffer (demap-minimap-buffer minimap)))
-    (->> (demap--buffer-change-showing old-buffer buffer)
-         (demap--minimap-buffer-set minimap) )
+    (thread-last
+      (demap--buffer-change-showing old-buffer buffer)
+      (demap--minimap-buffer-set minimap) )
     (kill-buffer old-buffer) ))
 
 (defun demap-minimap-showing-set(&optional minimap-or-name buffer-or-name)
@@ -442,9 +448,10 @@ being shown, nothing happens.
 this is equivalent to
 \(setf (`demap-minimap-showing' MINIMAP-OR-NAME) BUFFER-OR-NAME)"
   (let ((minimap (demap-normalize-minimap minimap-or-name))
-        (new-show (-some-> buffer-or-name
-                    (-> (window-normalize-buffer)
-                        (demap--tools-real-buffer) ))))
+        (new-show (when-let ((name buffer-or-name))
+                    (thread-first
+                      (window-normalize-buffer name)
+                      (demap--tools-real-buffer) ))))
     (unless (eq (demap-minimap-showing minimap) new-show)
       (demap-minimap-showing-set-unchecked minimap new-show) ))
   buffer-or-name )
@@ -469,8 +476,9 @@ you can use setf to set this value. setting this
 value changes what buffer MINIMAP-OR-NAME is
 showing to the buffer in window. setting this to
 nil will make MINIMAP-OR-NAME show a blank buffer."
-  (->> (demap-minimap-buffer minimap-or-name)
-       (buffer-local-value 'demap--minimap-window) ))
+  (thread-last
+    (demap-minimap-buffer minimap-or-name)
+    (buffer-local-value 'demap--minimap-window) ))
 
 (defun demap-minimap-window-set(&optional minimap-or-name window)
   "Set the window MINIMAP-OR-NAME is showing to WINDOW.
